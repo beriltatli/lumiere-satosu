@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Lumière Şatosu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Jost:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div id="stage"></div>
+
+<!-- oyun içi gösterge -->
+<div id="hud" hidden>
+  <div class="hud-tl">
+    <div class="runes" id="runes" aria-label="Rünler"></div>
+    <div class="stats">
+      <span id="coins">⚜ 0/30</span>
+      <span id="clock">00:00</span>
+      <span id="weatherLbl">Güneşli</span>
+    </div>
+  </div>
+  <div class="compass" id="compass" aria-hidden="true">
+    <div class="compass-strip" id="compassStrip"></div>
+    <div class="compass-tick"></div>
+  </div>
+  <div class="objective" id="objective"></div>
+  <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptText"></span></div>
+  <div class="hud-tr">
+    <button class="icon-btn" id="btnJournal" type="button" aria-label="Görev günlüğü">Günlük <kbd>J</kbd></button>
+    <button class="icon-btn" id="btnPause" type="button" aria-label="Menü">Menü <kbd>Esc</kbd></button>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<div id="dialog" hidden>
+  <div class="dlg-name" id="dlgName"></div>
+  <p class="dlg-text" id="dlgText"></p>
+  <div class="dlg-choices" id="dlgChoices"></div>
+  <div class="dlg-next" id="dlgNext">Devam <kbd>E</kbd></div>
+</div>
+
+<aside id="journal" class="sheet" hidden aria-label="Görev günlüğü">
+  <header><h2>Görev günlüğü</h2><button class="x" id="closeJournal" type="button" aria-label="Kapat">×</button></header>
+  <ol id="questList"></ol>
+  <div class="journal-foot" id="journalFoot"></div>
+</aside>
+
+<!-- başlık ekranı -->
+<section id="title" class="screen">
+  <div class="title-card">
+    <p class="eyebrow">Île-de-France · 1724</p>
+    <h1>Lumière Şatosu</h1>
+    <p class="sub">Kılıcın Rünleri</p>
+    <p class="lede">Tapınaktaki kılıç yüz yıldır uyuyor. Şatonun bahçelerine saklanmış beş rünü bul, onu yeniden uyandır.</p>
+    <div class="menu">
+      <button class="btn" id="btnContinue" type="button" hidden>Devam et</button>
+      <button class="btn" id="btnNew" type="button">Yeni oyun</button>
+      <button class="btn ghost" id="btnControls" type="button">Kontroller</button>
+    </div>
+    <p class="best" id="bestLine"></p>
+  </div>
+  <div class="controls-card" id="controlsCard" hidden>
+    <h3>Kontroller</h3>
+    <dl>
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Yürü</dd>
+      <dt><kbd>Shift</kbd></dt><dd>Koş · atla dörtnala</dd>
+      <dt><kbd>Boşluk</kbd></dt><dd>Zıpla</dd>
+      <dt><kbd>E</kbd></dt><dd>Konuş, incele, ata bin</dd>
+      <dt>Fareyi sürükle</dt><dd>Kamerayı çevir · tekerlek yakınlaştırır</dd>
+      <dt><kbd>H</kbd></dt><dd>Islık: Étoile yanına gelir</dd>
+      <dt><kbd>V</kbd></dt><dd>Attayken birinci / üçüncü şahıs</dd>
+      <dt><kbd>J</kbd></dt><dd>Görev günlüğü</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Menü</dd>
+      <dt>Telefonda</dt><dd>Sol başparmak yürür, sağ başparmak kamerayı çevirir</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- duraklatma menüsü -->
+<section id="pause" class="screen dim" hidden>
+  <div class="panel-card">
+    <h2>Duraklatıldı</h2>
+    <div class="menu">
+      <button class="btn" id="btnResume" type="button">Devam et</button>
+      <button class="btn ghost" id="btnPhoto" type="button">Fotoğraf modu</button>
+      <button class="btn ghost" id="btnTitle" type="button">Ana menü</button>
+    </div>
+    <div class="settings">
+      <label class="slider" for="volMusic">Müzik <output id="volMusicOut">50</output><input type="range" id="volMusic" min="0" max="100" value="50"></label>
+      <label class="slider" for="volSfx">Efektler <output id="volSfxOut">80</output><input type="range" id="volSfx" min="0" max="100" value="80"></label>
+      <label class="slider" for="sens">Kamera hassasiyeti <output id="sensOut">100</output><input type="range" id="sens" min="40" max="200" value="100"></label>
+      <div class="row-label">Görüntü kalitesi</div>
+      <div class="chips three" id="quality"></div>
+    </div>
+    <div class="danger">
+      <button class="btn ghost small" id="btnReset" type="button">İlerlemeyi sıfırla</button>
+      <div class="confirm" id="confirmReset" hidden>
+        <span>Bütün rünler ve madalyonlar silinecek.</span>
+        <button class="btn small" id="btnResetYes" type="button">Sıfırla</button>
+        <button class="btn ghost small" id="btnResetNo" type="button">Vazgeç</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- kılıç atölyesi (final) -->
+<aside id="workshop" class="sheet right" hidden aria-label="Kılıç atölyesi">
+  <header><h2>Kılıç atölyesi</h2></header>
+  <p class="muted">Beş rün kaidede. Kılıcını şekillendir ve uyandır.</p>
+  <div class="group"><span class="label">Bıçak</span><div class="chips" id="wsBlade"></div></div>
+  <div class="group"><span class="label">Balçak</span><div class="chips three" id="wsGuard"></div></div>
+  <div class="group"><span class="label">Malzeme</span><div class="chips" id="wsMaterial"></div></div>
+  <div class="group"><span class="label">Taş</span><div class="chips" id="wsGem"></div></div>
+  <button class="btn power" id="btnAwaken" type="button">Kılıcı uyandır</button>
+</aside>
+
+<!-- final -->
+<section id="ending" class="screen dim" hidden>
+  <div class="panel-card center">
+    <p class="eyebrow">Kılıç uyandı</p>
+    <h2 class="big">Lumière'in Işığı</h2>
+    <p class="lede">Beş rün kılıçta birleşti. Muhafızlar tapınağa dönüp selam duruyor; şatonun üstünde yeni bir yıldız parlıyor.</p>
+    <dl class="score">
+      <dt>Süre</dt><dd id="endTime">—</dd>
+      <dt>Madalyon</dt><dd id="endCoins">—</dd>
+      <dt>En iyi süre</dt><dd id="endBest">—</dd>
+    </dl>
+    <div class="menu row">
+      <button class="btn" id="btnFree" type="button">Serbest dolaş</button>
+      <button class="btn ghost" id="btnAgain" type="button">Yeni oyun</button>
+    </div>
+  </div>
+</section>
+
+<!-- fotoğraf modu -->
+<aside id="photo" class="sheet right" hidden aria-label="Fotoğraf modu">
+  <header><h2>Fotoğraf modu</h2><button class="x" id="closePhoto" type="button" aria-label="Kapat">×</button></header>
+  <p class="muted">Sürükle: döndür · Tekerlek: yakınlaş · Sağ tık: kaydır</p>
+  <div class="group"><span class="label">Hava ve saat</span><div class="chips three" id="phWeather"></div></div>
+  <div class="row">
+    <button class="btn" id="btnPng" type="button">PNG kaydet</button>
+    <button class="btn ghost" id="btnGlb" type="button">GLB dışa aktar</button>
+  </div>
+</aside>
+
+<!-- dokunmatik kontroller -->
+<div id="touch" hidden>
+  <div id="joy"><div id="joyKnob"></div></div>
+  <div class="tbtns">
+    <button type="button" class="tb" data-act="jump" aria-label="Zıpla">⤒</button>
+    <button type="button" class="tb" data-act="run" aria-pressed="false" aria-label="Koş">Koş</button>
+    <button type="button" class="tb big" data-act="interact" aria-label="Etkileşim">E</button>
+    <button type="button" class="tb" data-act="whistle" aria-label="Atı çağır">🐴</button>
+    <button type="button" class="tb" data-act="view" aria-label="Görünüm">👁</button>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="loader">Kaynaklar yükleniyor…</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
