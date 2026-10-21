@@ -32,6 +32,8 @@ hero.Cin = interior.C;
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
 const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 if (hero.horse && hero._horseObstacle) interior.C.dynamics.push(hero._horseObstacle(true));
+// bütün malzemelere atmosfer yaması: sis, bulut gölgesi, yüzey çeşitliliği, temas gölgesi
+world.atmo.patchScene();
 const CASTLE_DOOR = {x:0, y:1, z:world.CZ + 10.6};
 const castleDoorInteract = {x:0, y:1, z:world.CZ + 10.2, r:2.4, label:'Şatoya gir', show:() => true, act:() => enterCastle()};
 let indoor = false, gaze = null;
@@ -74,7 +76,7 @@ function applyQuality(q){
   renderer.setPixelRatio(q === 'yuksek' ? Math.min(devicePixelRatio, 1.75) : q === 'orta' ? Math.min(devicePixelRatio, 1.25) : 1);
   renderer.shadowMap.enabled = q !== 'dusuk';
   world.scene.traverse(o => { if (o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; });
-  estate.setDetail(q);
+  estate.setDetail(q); world.setQuality(q);
   world.resize(); saveSettings(settings);
 }
 if (input.touch && !localStorage.getItem('lumiere-satosu-kayit-v1-ayar')) settings.quality = 'dusuk';
@@ -117,7 +119,7 @@ function startPlay(){
   if (!content) setupContent();
   // kaydı geri yükle
   ui.setRunes(S); ui.coins(S.coins.length);
-  world.setWeather(S.weather || 'gunesli');
+  world.setWeather(S.weather || 'gunesli', true);
   spawnHorse(S.horse || {x:3.6, z:-11.5, yaw:-0.6});   // Étoile her zaman hazır
   const P = S.player; hero.teleport(P.x, C.height(P.x, P.z), P.z, P.yaw);
   if (S.mounted && hero.horse) hero.mount();
@@ -196,7 +198,7 @@ function coinMarkers(){
 /* ---------- şatonun içi ---------- */
 const exteriorGroups = [world.chateau, world.garden, world.temple, estate.root];
 function setIndoor(v){
-  indoor = v; interior.root.visible = v;
+  indoor = v; interior.root.visible = v; world.atmo.setOutdoor(!v);
   exteriorGroups.forEach(g => { g.visible = !v; });
   if (!v){ world.applyWeather(true); world.flareLight.visible = true; }
 }
