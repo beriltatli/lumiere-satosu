@@ -3,6 +3,9 @@ import { createWorld } from './world.js';
 import { buildEstate } from './estate.js';
 import { buildInterior, IN } from './interior.js';
 import { buildSanctuary } from './sanctuary.js';
+import { buildCourt } from './court.js';
+import { buildRoyal } from './royal.js';
+import { createDragonRide } from './dragonride.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -29,7 +32,15 @@ const interior = buildInterior(world, {
 });
 hero.Cin = interior.C;
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
+const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
+const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
 if (hero.horse && hero._horseObstacle) interior.C.dynamics.push(hero._horseObstacle(true));
+const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hooks:{
+  setMode:m => setMode(m), nextWeather:() => setWeather(nextWeather(), true),
+  photo:() => { composer.render(); renderer.domElement.toBlob(b => b && world.offer('lumiere-ejderha.png', b), 'image/png'); },
+}});
+// bütün malzemelere atmosfer yaması: sis, bulut gölgesi, yüzey çeşitliliği, temas gölgesi
+world.atmo.patchScene();
 const CASTLE_DOOR = {x:0, y:1, z:world.CZ + 10.6};
 const castleDoorInteract = {x:0, y:1, z:world.CZ + 10.2, r:2.4, label:'Şatoya gir', show:() => true, act:() => enterCastle()};
 let indoor = false, gaze = null;
@@ -72,7 +83,7 @@ function applyQuality(q){
   renderer.setPixelRatio(q === 'yuksek' ? Math.min(devicePixelRatio, 1.75) : q === 'orta' ? Math.min(devicePixelRatio, 1.25) : 1);
   renderer.shadowMap.enabled = q !== 'dusuk';
   world.scene.traverse(o => { if (o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; });
-  estate.setDetail(q);
+  estate.setDetail(q); world.setQuality(q);
   world.resize(); saveSettings(settings);
 }
 if (input.touch && !localStorage.getItem('lumiere-satosu-kayit-v1-ayar')) settings.quality = 'dusuk';
@@ -115,7 +126,7 @@ function startPlay(){
   if (!content) setupContent();
   // kaydı geri yükle
   ui.setRunes(S); ui.coins(S.coins.length);
-  world.setWeather(S.weather || 'gunesli');
+  world.setWeather(S.weather || 'gunesli', true);
   spawnHorse(S.horse || {x:3.6, z:-11.5, yaw:-0.6});   // Étoile her zaman hazır
   const P = S.player; hero.teleport(P.x, C.height(P.x, P.z), P.z, P.yaw);
   if (S.mounted && hero.horse) hero.mount();
@@ -132,8 +143,9 @@ function setMode(m){
   $('photo').hidden = m !== 'photo';
   $('hud').hidden = !['play'].includes(m);
   $('touch').hidden = !(input.touch && m === 'play');
-  input.enabled = m === 'play';
+  input.enabled = m === 'play' || m === 'fly';
   if (m !== 'play') ui.prompt(null);
+  $('flyHud').hidden = m !== 'fly';
   if (m === 'pause' || m === 'title') save();
 }
 $('btnPause').addEventListener('click', () => togglePause());
@@ -194,7 +206,7 @@ function coinMarkers(){
 /* ---------- şatonun içi ---------- */
 const exteriorGroups = [world.chateau, world.garden, world.temple, estate.root];
 function setIndoor(v){
-  indoor = v; interior.root.visible = v;
+  indoor = v; interior.root.visible = v; world.atmo.setOutdoor(!v);
   exteriorGroups.forEach(g => { g.visible = !v; });
   if (!v){ world.applyWeather(true); world.flareLight.visible = true; }
 }
@@ -228,7 +240,17 @@ function startGaze(){
   ui.toast('Teleskop · E ile dön', 2600);
 }
 function endGaze(){
-  gaze = null; setIndoor(true); setMode('play'); hero.snapCamera = true;
+  const g = gaze; gaze = null;
+  if (g && g.tour) g.tour.end(); else if (!(g && g.sky)) setIndoor(true);
+  setMode('play'); hero.snapCamera = true;
+}
+// sinematik gezinti (ör. gondol): T = {dur, step(t, camera) -> bitti mi, end()}
+function startTour(T){ gaze = {t:0, tour:T}; setMode('gaze'); }
+// rasathanenin teleskobu: kulenin tepesinden gökyüzüne bakış
+function startSkyGaze(p){
+  if (hero.mounted) hero.dismount();
+  gaze = {t:0, sky:p}; setMode('gaze');
+  ui.toast(world.W.night > 0.5 ? 'Teleskop · E ile dön' : 'Gündüz gökyüzü · E ile dön', 2600);
 }
 function playHarpsichord(){
   if (!audio.ctx) return;
@@ -237,7 +259,8 @@ function playHarpsichord(){
   m.forEach((n, i) => { audio.pluck(mtof(n), t0 + i * 0.28, 0.16, 0.9); if (i % 4 === 0) audio.pluck(mtof(n - 24), t0 + i * 0.28, 0.12, 1.4); });
   ui.toast('♪ Minuet', 2200);
 }
-function togglePause(){ if (mode === 'play') setMode('pause'); else if (mode === 'pause') setMode('play'); }
+let pauseBack = 'play';
+function togglePause(){ if (mode === 'play' || mode === 'fly'){ pauseBack = mode; setMode('pause'); } else if (mode === 'pause') setMode(pauseBack); }
 
 /* ---------- kayıt ---------- */
 function save(){
@@ -245,6 +268,7 @@ function save(){
   S.player = {x:hero.pos.x, y:hero.pos.y, z:hero.pos.z, yaw:hero.yaw};
   if (hero.zone === 'kule' && content) S.player = {x:content.TW.groundDoor.x, y:1, z:content.TW.groundDoor.z, yaw:content.TW.groundDoor.yaw};
   if (hero.zone === 'ic') S.player = {x:CASTLE_DOOR.x, y:1, z:CASTLE_DOOR.z, yaw:0};
+  if (hero.zone === 'gecit') S.player = Object.assign({}, royal.libraryExit);
   S.mounted = hero.mounted; S.horse = hero.horse ? (hero.horse.position.y < -20 ? {x:3.2, z:CASTLE_DOOR.z + 0.5, yaw:0} : {x:hero.horse.position.x, z:hero.horse.position.z, yaw:hero.horse.rotation.y}) : null;
   S.weather = world.weatherKey; S.sword = Object.assign({}, world.swordCfg);
   saveGame(S);
@@ -260,6 +284,7 @@ function spawnHorse(at){
 function whistleHorse(){
   if (!hero.horse || hero.mounted) return;
   if (hero.zone === 'kule'){ ui.toast('Étoile kuleye çıkamaz', 1800); return; }
+  if (hero.zone === 'gecit'){ ui.toast('Étoile gizli geçide sığmaz', 1800); return; }
   const Cz = hero.zone === 'ic' ? interior.C : C, s = Math.sin(hero.yaw), c = Math.cos(hero.yaw);
   audio.sfx('whistle');
   for (const [ox, oz] of [[2.4, -1.5], [-2.4, -1.5], [0, -3], [3, 1], [-3, 1], [0, 3]]){
@@ -348,7 +373,7 @@ $('btnGlb').addEventListener('click', async () => {
 function pickInteract(){
   const p = hero.pos; let best = null;
   const consider = (o, d) => { if (!best || d < best.d) best = {o, d}; };
-  const lists = hero.zone === 'ic' ? [interior.interact] : [content.interact, sanctuary.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
+  const lists = hero.zone === 'ic' ? [interior.interact] : [content.interact, sanctuary.interact, court.interact, royal.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
   for (const list of lists) for (const o of list){
     if ((o.zone || null) !== hero.zone || !o.show()) continue;
     if (o.y != null && Math.abs(p.y - o.y) > 2.2) continue;
@@ -382,7 +407,7 @@ function frame(){
   world.state.wind += (wantWind - world.state.wind) * Math.min(1, dt * 0.8);
 
   if (input.take('pause')){
-    if (mode === 'play' || mode === 'pause') togglePause();
+    if (mode === 'play' || mode === 'pause' || mode === 'fly') togglePause();
     else if (mode === 'photo') $('closePhoto').click();
     else if (mode === 'gaze') endGaze();
     if (!$('journal').hidden) ui.journal(S, false);
@@ -397,10 +422,18 @@ function frame(){
   } else if (mode === 'gaze'){
     // teleskop: kubbenin tepesinden malikâneye geniş bir bakış
     gaze.t += dt;
+    if (gaze.tour){
+      if (gaze.tour.step(gaze.t, camera)){ endGaze(); }
+    } else if (gaze.sky){
+      const P = gaze.sky, a = gaze.t * 0.05;
+      camera.position.set(P.x, P.y, P.z);
+      camera.lookAt(P.x + Math.sin(a) * 40, P.y + 70 + Math.sin(gaze.t * 0.15) * 10, P.z - Math.cos(a) * 40);
+    } else {
     const a = gaze.t * 0.12 + 0.6, r = 70 + Math.sin(gaze.t * 0.3) * 10;
     camera.position.set(Math.sin(a) * r, 46 + Math.sin(gaze.t * 0.2) * 6, world.CZ + 20 + Math.cos(a) * r);
     camera.lookAt(0, 4, 10);
-    if (gaze.t > 0.3 && (input.take('interact') || input.take('pause') || gaze.t > 16)) endGaze();
+    }
+    if (gaze && gaze.t > 0.3 && (input.take('interact') || input.take('pause') || (!gaze.tour && gaze.t > 16))) endGaze();
   } else if (mode === 'play' && !ui.dialogOpen){
     hero.frozen = false;
     const rainSlow = 1 - 0.28 * W.rain;
@@ -424,11 +457,18 @@ function frame(){
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
     ui.stats(S.elapsed, world.WEATHER[world.weatherKey].name + ' · rüzgâr ' + Math.round(6 + world.state.wind * 40) + ' km/s');
     const look = Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z);
-    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : content.markers.concat(estate.markers || [], sanctuary.markers, horseMarker())).concat(coinMarkers()));
+    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, horseMarker())).concat(coinMarkers()));
     updateOranges(dt, t);
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
     content.update(dt, t);
+  } else if (mode === 'fly'){
+    // ejderha uçuşu: kamera ve hareket dragonride.js'te
+    ride.update(dt, t);
+    content.update(dt, t);
+    S.elapsed += dt;
+    weatherTimer -= dt; if (weatherTimer <= 0) setWeather(nextWeather(), true);
+    saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
   } else if (mode === 'workshop' || mode === 'cinematic'){
     // tapınak çevresinde yavaş dönen kamera
     cine.t += dt;
@@ -458,6 +498,8 @@ function frame(){
   }
   world.update(dt, t);
   sanctuary.update(dt, t, hero);
+  court.update(dt, t, hero);
+  royal.update(dt, t, hero);
   estate.indoor = indoor;
   estate.update(dt, t, hero);
   interior.update(dt, t, hero, S, id => {
@@ -483,4 +525,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, whistleHorse, pickInteract };

@@ -11,6 +11,9 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import * as fflate from 'fflate';
+import { COURT_ZONES } from './court.js';
+import { ROYAL_ZONES } from './royal.js';
+import { createAtmosphere } from './atmosphere.js';
 
 const THREE = { ...T, Sky, GLTFExporter, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, GammaCorrectionShader };
 
@@ -39,6 +42,13 @@ camera.position.set(64, 32, 80);
 
 /* sky */
 const sky = new THREE.Sky(); sky.scale.setScalar(2500); scene.add(sky);
+// Preetham gökyüzü ACES ile soluk kalıyor: açık havada doygunluğu artır, zeniti koyulaştır
+sky.material.uniforms.uSkySat = {value:1.6}; sky.material.uniforms.uSkyZenith = {value:0.72};
+sky.material.fragmentShader = 'uniform float uSkySat; uniform float uSkyZenith;\n' + sky.material.fragmentShader.replace('gl_FragColor = vec4( retColor, 1.0 );', `
+  float skL = dot(retColor, vec3(0.2126, 0.7152, 0.0722));
+  retColor = max(mix(vec3(skL), retColor, uSkySat), 0.0);
+  retColor *= mix(1.0, uSkyZenith, pow(clamp(direction.y, 0.0, 1.0), 0.6));
+  gl_FragColor = vec4( retColor, 1.0 );`);
 const envScene = new THREE.Scene(); const envSky = new THREE.Sky(); envSky.material = sky.material; envSky.scale.setScalar(10); envScene.add(envSky);
 const pmrem = new THREE.PMREMGenerator(renderer);
 let envRT = null;
@@ -65,7 +75,7 @@ const groundMat = new THREE.MeshStandardMaterial({map:tex(gc, 240, 240, true), r
 const [rc, rg] = canvas(256, 256);
 rg.fillStyle = '#ab9c7e'; rg.fillRect(0,0,256,256);
 for (let i = 0; i < 9000; i++){ const v = 120 + rnd()*80; rg.fillStyle = `rgba(${v},${v-8},${v-24},.7)`; rg.beginPath(); rg.arc(rnd()*256, rnd()*256, 0.6 + rnd()*1.4, 0, 6.283); rg.fill(); }
-const gravelMat = new THREE.MeshStandardMaterial({map:tex(rc, 18, 18, true), roughness:0.92});
+const gravelMat = new THREE.MeshStandardMaterial({map:tex(rc, 18, 18, true), color:0xcdc4b6, roughness:0.92});   // gerçek çakıl albedosu dokudan koyu
 // limestone
 const [sc, sg] = canvas(256, 256);
 sg.fillStyle = '#dccfb4'; sg.fillRect(0,0,256,256); speckle(sg, 256, 256, 5000, 0.18, 255, 120);
@@ -244,7 +254,7 @@ const PARTERRES = [
 ];
 const colliders = {boxes:[], circles:[]};
 // Ek alanlar (haras, seralar, kış bahçesi) için ağaçsız bölgeler [x0, z0, x1, z1]
-const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158]];
+const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES];
 const timeU = {value:0}, windU = {value:0.35};
 // Rüzgâr: yer değiştirme dünya uzayında uygulanır (örnekler rastgele dönük olsa da hepsi aynı yöne eğilir).
 // Rüzgâr yönünde ilerleyen esinti dalgaları çimen ve çiçeklerde "dalga" deseni oluşturur.
@@ -671,10 +681,10 @@ const starGeo = new THREE.BufferGeometry(); const spos = [];
 for (let i = 0; i < 1800; i++){ const a = rnd()*6.283, y = 0.06 + rnd()*0.94, r = Math.sqrt(1-y*y); spos.push(Math.cos(a)*r*1200, y*1200, Math.sin(a)*r*1200); }
 starGeo.setAttribute('position', new THREE.Float32BufferAttribute(spos, 3));
 const starMat = new THREE.PointsMaterial({size:1.5, sizeAttenuation:false, color:0xdfe6ff, transparent:true, opacity:0, fog:false, depthWrite:false});
-scene.add(new THREE.Points(starGeo, starMat));
+const stars = new THREE.Points(starGeo, starMat); stars.renderOrder = -2; scene.add(stars);   // bulutların arkasında kalsın
 const MOON_DIR = new THREE.Vector3(-0.5, 0.55, 0.65).normalize();
 const moonMat = new THREE.SpriteMaterial({map:dotTex, color:0xeef2ff, fog:false, transparent:true, opacity:0, depthWrite:false});
-const moon = new THREE.Sprite(moonMat); moon.position.copy(MOON_DIR).multiplyScalar(1100); moon.scale.setScalar(60); scene.add(moon);
+const moon = new THREE.Sprite(moonMat); moon.position.copy(MOON_DIR).multiplyScalar(1100); moon.scale.setScalar(60); moon.renderOrder = -2; scene.add(moon);
 
 const [cc, cg] = canvas(512, 512);
 for (let i = 0; i < 260; i++){
@@ -687,6 +697,8 @@ for (let i = 0; i < 260; i++){
 const cloudTex = tex(cc, 3, 3, false);
 const cloudMat = new THREE.MeshBasicMaterial({map:cloudTex, alphaMap:cloudTex, transparent:true, opacity:0.2, fog:false, depthWrite:false, side:THREE.DoubleSide});
 const clouds = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), cloudMat); clouds.rotation.x = Math.PI/2; clouds.position.y = 320; scene.add(clouds);
+const atmo = createAtmosphere({THREE, renderer, scene, camera, sky});
+clouds.visible = !atmo.volumetric;   // WebGL2'de yerini hacimsel bulutlar alır (atmosphere.js)
 
 const RAIN = 3000; const rGeo = new THREE.BufferGeometry();
 const rPos = new Float32Array(RAIN*6), rOff = new Float32Array(RAIN*3);
@@ -697,9 +709,9 @@ const rain = new THREE.LineSegments(rGeo, rainMat); rain.frustumCulled = false; 
 
 /* ================= weather ================= */
 const WEATHER = {
-  gunesli:  {name:'Güneşli', time:'13:10', temp:23, elev:52, azim:200, turb:3.2, rayl:1.0, mie:0.004, mieG:0.8, sunI:3.0, sunC:0xfff1dc, hemiI:0.6, hemiS:0xbfd8ff, hemiG:0x5d6b3c, clouds:0.18, cloudC:0xffffff, rain:0, fogN:160, fogF:1100, fogC:0xc4d6ea, exp:0.55, night:0, bloom:0.18, wet:0},
-  bulutlu:  {name:'Bulutlu', time:'11:40', temp:17, elev:40, azim:170, turb:12, rayl:2.4, mie:0.008, mieG:0.75, sunI:1.1, sunC:0xe8ecf0, hemiI:0.95, hemiS:0xc9d1dc, hemiG:0x4d5741, clouds:0.9, cloudC:0xdde1e6, rain:0, fogN:90, fogF:650, fogC:0xb2bbc5, exp:0.62, night:0, bloom:0.12, wet:0},
-  yagmurlu: {name:'Yağmurlu', time:'16:20', temp:13, elev:28, azim:230, turb:20, rayl:3.2, mie:0.012, mieG:0.7, sunI:0.35, sunC:0xc8d0dc, hemiI:0.85, hemiS:0x8e99a8, hemiG:0x384030, clouds:1, cloudC:0x6d7581, rain:1, fogN:25, fogF:300, fogC:0x7e8896, exp:0.72, night:0.25, bloom:0.22, wet:1},
+  gunesli:  {name:'Güneşli', time:'13:10', temp:23, elev:46, azim:28, turb:2.4, rayl:2.0, mie:0.0035, mieG:0.82, sunI:3.0, sunC:0xfff1dc, hemiI:0.6, hemiS:0xbfd8ff, hemiG:0x5d6b3c, clouds:0.18, cloudC:0xffffff, rain:0, fogN:160, fogF:1100, fogC:0xc4d6ea, exp:0.5, night:0, bloom:0.18, wet:0},
+  bulutlu:  {name:'Bulutlu', time:'11:40', temp:17, elev:40, azim:350, turb:12, rayl:2.4, mie:0.008, mieG:0.75, sunI:1.1, sunC:0xe8ecf0, hemiI:0.95, hemiS:0xc9d1dc, hemiG:0x4d5741, clouds:0.9, cloudC:0xdde1e6, rain:0, fogN:90, fogF:650, fogC:0xb2bbc5, exp:0.62, night:0, bloom:0.12, wet:0},
+  yagmurlu: {name:'Yağmurlu', time:'16:20', temp:13, elev:28, azim:50, turb:20, rayl:3.2, mie:0.012, mieG:0.7, sunI:0.35, sunC:0xc8d0dc, hemiI:0.85, hemiS:0x8e99a8, hemiG:0x384030, clouds:1, cloudC:0x6d7581, rain:1, fogN:25, fogF:300, fogC:0x7e8896, exp:0.72, night:0.25, bloom:0.22, wet:1},
   gunbatimi:{name:'Gün batımı', time:'20:45', temp:19, elev:2.2, azim:262, turb:8, rayl:3.2, mie:0.008, mieG:0.96, sunI:2.2, sunC:0xff9748, hemiI:0.45, hemiS:0xffb48c, hemiG:0x3a3040, clouds:0.38, cloudC:0xffa274, rain:0, fogN:110, fogF:800, fogC:0xd89c7c, exp:0.6, night:0.55, bloom:0.45, wet:0},
   gece:     {name:'Gece', time:'23:30', temp:12, elev:-9, azim:262, turb:2, rayl:0.4, mie:0.003, mieG:0.8, sunI:0.45, sunC:0x9fb4ff, hemiI:0.3, hemiS:0x34466e, hemiG:0x0f131c, clouds:0.22, cloudC:0x2b3448, rain:0, fogN:80, fogF:520, fogC:0x0e1526, exp:0.8, night:1, bloom:0.95, wet:0},
 };
@@ -707,7 +719,8 @@ const W = Object.assign({}, WEATHER.gunesli); let wFrom = null, wTo = WEATHER.gu
 const NUM_KEYS = ['elev','azim','turb','rayl','mie','mieG','sunI','hemiI','clouds','rain','fogN','fogF','exp','night','bloom','wet','temp'];
 const COL_KEYS = ['sunC','hemiS','hemiG','cloudC','fogC'];
 const cA = new THREE.Color(), cB = new THREE.Color();
-function setWeather(k){ wFrom = Object.assign({}, W); wTo = WEATHER[k]; wT = 0; wKey = k; if (hdriEnv) scene.environment = hdriEnv[k]; }
+function setWeather(k, instant){ wFrom = Object.assign({}, W); wTo = WEATHER[k]; wT = 0; wKey = k; if (hdriEnv) scene.environment = hdriEnv[k];
+  if (instant){ wT = 1; Object.assign(W, WEATHER[k]); applyWeather(true); } }
 const sunVec = new THREE.Vector3();
 let envTimer = 0;
 function updateWeather(dt){
@@ -723,10 +736,11 @@ function applyWeather(env){
   u.turbidity.value = W.turb; u.rayleigh.value = W.rayl; u.mieCoefficient.value = W.mie; u.mieDirectionalG.value = W.mieG;
   sunVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - W.elev), THREE.MathUtils.degToRad(W.azim));
   u.sunPosition.value.copy(sunVec);
+  u.uSkySat.value = 1 + 0.85 * (1 - Math.min(1, W.clouds * 0.9)) * (1 - W.rain) * (1 - W.night); u.uSkyZenith.value = lerp(0.72, 1.0, Math.max(W.rain, W.night * 0.6));
   const lightDir = W.elev > 0 ? sunVec : MOON_DIR;
   sun.position.copy(sun.target.position).addScaledVector(lightDir, 250);
   sun.intensity = W.sunI; sun.color.setHex(W.sunC);
-  hemi.intensity = W.hemiI; hemi.color.setHex(W.hemiS); hemi.groundColor.setHex(W.hemiG);
+  hemi.intensity = W.hemiI * 0.75; hemi.color.setHex(W.hemiS); hemi.groundColor.setHex(W.hemiG);
   cloudMat.opacity = W.clouds * 0.95; cloudMat.color.setHex(W.cloudC);
   scene.fog.color.setHex(W.fogC); scene.fog.near = W.fogN; scene.fog.far = W.fogF;
   renderer.toneMappingExposure = W.exp;
@@ -739,19 +753,29 @@ function applyWeather(env){
 }
 
 /* ================= post ================= */
-const composer = new THREE.EffectComposer(renderer);
+// HDR (yarım kayan nokta) ve çok örnekli kenar yumuşatma: composer'da tarayıcının antialias'ı çalışmaz
+const MSAA = renderer.capabilities.isWebGL2 ? 4 : 0;
+const composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, {type:THREE.HalfFloatType, samples:MSAA}));
 composer.addPass(new THREE.RenderPass(scene, camera));
 const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.5, 0.92);
 composer.addPass(bloom);
-composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+const gradePass = new THREE.ShaderPass(atmo.gradeShader); composer.addPass(gradePass);
+function setQuality(q){
+  const n = q === 'yuksek' ? MSAA : q === 'orta' ? Math.min(2, MSAA) : 0;
+  [composer.renderTarget1, composer.renderTarget2].forEach(rt => { if (rt.samples !== n){ rt.samples = n; rt.dispose(); } });
+  const ms = q === 'yuksek' ? 4096 : 2048;
+  if (sun.shadow.mapSize.x !== ms){ sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  atmo.setQuality(q);
+}
 function resize(){
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
+  atmo.resize(); gradePass.uniforms.uRes.value.set(w, h);
   camera.aspect = w / h; camera.fov = w < 720 ? 55 : 42; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
 scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-  ms.forEach(m => { if (m.isMeshStandardMaterial) m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.3; }); });
+  ms.forEach(m => { if (m.isMeshStandardMaterial) m.envMapIntensity = m.metalness > 0.5 ? 1.0 : 0.5; }); });
 bladeMat.envMapIntensity = 1.3; grassMat.envMapIntensity = 0.12;
 applyWeather(true);
 
@@ -835,6 +859,8 @@ function update(dt, t){
   windU.value = lerp(windU.value, reduceMotion ? 0 : windTarget, dt * 2);
   updateWeather(dt);
   cloudTex.offset.x += dt * 0.004 * (0.3 + windU.value);
+  atmo.update(dt, t, {W, lightDir:W.elev > 0 ? sunVec : MOON_DIR, sunColor:W.sunC, sunI:W.sunI, hemiSky:W.hemiS, hemiGround:W.hemiG, hemiI:W.hemiI, fogColor:W.fogC, wind:windU.value, windDir:WIND_DIR});
+  atmo.render();
 
   for (let i = 0; i < DROPS; i++){
     dVel[i*3+1] -= 9.8 * dt;
@@ -1038,6 +1064,6 @@ return {
   WEATHER, W, setWeather, get weatherKey(){ return wKey; }, sunVec,
   MATERIALS, GEMS, swordCfg, buildSword, applyMaterial, applyGem, swordPivot,
   get power(){ return power; }, setPowerOn(v){ powerOn = v; },
-  update, resize, offer, timeU, windU, windMat, EXCLUDE, sun, hemi, rain, flareLight, applyWeather, MOON_DIR,
+  update, resize, offer, timeU, windU, windMat, atmo, setQuality, EXCLUDE, sun, hemi, rain, flareLight, applyWeather, MOON_DIR,
 };
 }

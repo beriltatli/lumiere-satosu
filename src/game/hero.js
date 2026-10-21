@@ -104,7 +104,7 @@ export class Hero {
     this.camYaw -= I.look.dx * 0.005;
     if (this.fp) this.fpPitch = Math.max(-1.1, Math.min(0.9, this.fpPitch - I.look.dy * 0.004));
     else this.camPitch = Math.max(-0.15, Math.min(1.2, this.camPitch + I.look.dy * 0.004));
-    if (I.zoom) this.camDistT = Math.max(this.zone === 'ic' ? 2 : 3, Math.min(this.mounted ? 18 : this.zone === 'ic' ? 7 : 14, this.camDistT + I.zoom * 0.8));
+    if (I.zoom) this.camDistT = Math.max(this.zone === 'ic' ? 2 : 3, Math.min(this.mounted ? 18 : this.zone === 'ic' ? 7 : this.zone === 'gecit' ? 3.6 : 14, this.camDistT + I.zoom * 0.8));
     const C = this.zone === 'ic' && this.Cin ? this.Cin : this.C;
     const mvx = this.frozen ? 0 : I.move.x, mvy = this.frozen ? 0 : I.move.y, mag = Math.min(1, Math.hypot(mvx, mvy));
 
@@ -117,7 +117,7 @@ export class Hero {
     const wet = mods.rainSlow;      // yağmurda yavaşlama çarpanı
     let target;
     if (this.mounted) target = (I.run ? GALLOP : HORSE) * wet * mag;
-    else target = (I.run ? RUN : WALK) * (0.9 + 0.1 * wet) * mag;
+    else target = (I.run ? RUN : WALK) * (0.9 + 0.1 * wet) * mag * (this.speedMul || 1);
     if (this.zone === 'kule') target = Math.min(target, WALK);
     this.speed += (target - this.speed) * Math.min(1, dt * (this.mounted ? 2.2 : 9));
 
@@ -138,7 +138,7 @@ export class Hero {
       C.resolve(p, this.mounted ? 0.85 : R, this.pos.y);
       // basamak kuralı: 0.6 m'den yüksek bir basamağa/çıkıntıya yürüyerek çıkılmaz
       if (C.ledge(p.x, p.z, this.pos.y)){ p.x = prev.x; p.z = prev.z; }
-      if (this.zone !== 'ic'){ const lim = 230, rr = Math.hypot(p.x, p.z - 10); if (rr > lim){ p.x *= lim / rr; p.z = 10 + (p.z - 10) * lim / rr; } }
+      if (this.zone !== 'ic' && this.zone !== 'gecit'){ const lim = 280, rr = Math.hypot(p.x, p.z - 10); if (rr > lim){ p.x *= lim / rr; p.z = 10 + (p.z - 10) * lim / rr; } }
     }
     this.pos.x = p.x; this.pos.z = p.z;
     const realSpeed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-4);
@@ -207,7 +207,7 @@ export class Hero {
       if (f < 1){ const k = Math.max(0.12, f); want.x = this.pos.x + (want.x - this.pos.x) * k; want.z = this.pos.z + (want.z - this.pos.z) * k; want.y = headY + (want.y - headY) * k; }
     }
     const gy = (this.zone === 'kule' ? mods.towerFloor : C.height(want.x, want.z, this.pos.y + 0.5)) + 0.4;
-    if (this.zone === 'ic' && C.ceiling){ const cy = C.ceiling(this.pos.x, this.pos.z, this.pos.y) - 0.35; if (want.y > cy) want.y = Math.max(cy, headY - 0.2); }
+    if ((this.zone === 'ic' || this.zone === 'gecit') && C.ceiling){ const cy = C.ceiling(this.pos.x, this.pos.z, this.pos.y) - 0.35; if (want.y > cy) want.y = Math.max(cy, headY - 0.2); }
     if (want.y < gy) want.y = gy;
     if (this.snapCamera){ this.camPos.copy(want); this.snapCamera = false; }
     else this.camPos.lerp(want, Math.min(1, dt * 10));
