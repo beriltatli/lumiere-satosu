@@ -12,6 +12,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import * as fflate from 'fflate';
 import { COURT_ZONES } from './court.js';
+import { ROYAL_ZONES } from './royal.js';
 import { createAtmosphere } from './atmosphere.js';
 
 const THREE = { ...T, Sky, GLTFExporter, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, GammaCorrectionShader };
@@ -253,7 +254,7 @@ const PARTERRES = [
 ];
 const colliders = {boxes:[], circles:[]};
 // Ek alanlar (haras, seralar, kış bahçesi) için ağaçsız bölgeler [x0, z0, x1, z1]
-const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES];
+const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES];
 const timeU = {value:0}, windU = {value:0.35};
 // Rüzgâr: yer değiştirme dünya uzayında uygulanır (örnekler rastgele dönük olsa da hepsi aynı yöne eğilir).
 // Rüzgâr yönünde ilerleyen esinti dalgaları çimen ve çiçeklerde "dalga" deseni oluşturur.
@@ -735,7 +736,7 @@ function applyWeather(env){
   u.turbidity.value = W.turb; u.rayleigh.value = W.rayl; u.mieCoefficient.value = W.mie; u.mieDirectionalG.value = W.mieG;
   sunVec.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - W.elev), THREE.MathUtils.degToRad(W.azim));
   u.sunPosition.value.copy(sunVec);
-  u.uSkySat.value = 1 + 0.85 * (1 - Math.min(1, W.clouds * 0.9)) * (1 - W.rain) * (1 - W.night * 0.5); u.uSkyZenith.value = lerp(0.72, 1.0, Math.max(W.rain, W.night * 0.6));
+  u.uSkySat.value = 1 + 0.85 * (1 - Math.min(1, W.clouds * 0.9)) * (1 - W.rain) * (1 - W.night); u.uSkyZenith.value = lerp(0.72, 1.0, Math.max(W.rain, W.night * 0.6));
   const lightDir = W.elev > 0 ? sunVec : MOON_DIR;
   sun.position.copy(sun.target.position).addScaledVector(lightDir, 250);
   sun.intensity = W.sunI; sun.color.setHex(W.sunC);

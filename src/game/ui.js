@@ -76,7 +76,7 @@ export class UI {
       const n = RUNES.filter(r => S.runes[r.id]).length;
       add('Kılıcı uyandır', 'Tapınaktaki kaideye beş rünü yerleştir. (' + n + '/5)', S.finished, '#ffffff');
       if (S.notes.cookQuest) add('Aşçı Marcel için portakal', 'Portakal serasında yere düşmüş olgun portakalları topla ve şatonun mutfağına götür. (' + Math.min(3, (S.notes.oranges || []).length) + '/3)', !!S.notes.coinMap, '#ff8a1a');
-      if ((S.notes.places || []).length) add('Saray bahçelerini keşfet', 'Gül labirenti, kuğu göleti, opera, rasathane, hamam, şarap mahzeni… Pusuladaki altın işaretleri izle. (' + S.notes.places.length + '/' + PLACES.length + ')', S.notes.places.length >= PLACES.length, '#d4af37');
+      if ((S.notes.places || []).length) add('Saray bahçelerini keşfet', 'Gül labirenti, gondol iskelesi, Zafer Takı, Ayna Galerisi, av köşkü, gizli geçitler… Pusuladaki altın işaretleri izle. (' + S.notes.places.length + '/' + PLACES.length + ')', S.notes.places.length >= PLACES.length, '#d4af37');
       if (S.notes.princess) add('Pyra\'nın yumurtası', S.notes.egg === 'tasiniyor' ? 'Mor yumurta sende. Doğudaki kubbeli ejderha kafesinin batı kapısına götür.' : 'Prenses Aurélie, ejderha Pyra\'nın kayıp mor yumurtasının Kelebek Vadisi\'ndeki şelalenin yanında olduğunu söyledi.', S.notes.egg === 'yuvada', '#b08aff');
     }
     $('journalFoot').innerHTML = '<span>⚜ Madalyon ' + S.coins.length + '/' + COIN_TOTAL + '</span><span>Süre ' + fmtTime(S.elapsed) + '</span>';
