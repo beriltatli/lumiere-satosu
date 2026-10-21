@@ -5,6 +5,7 @@ import { buildInterior, IN } from './interior.js';
 import { buildSanctuary } from './sanctuary.js';
 import { buildCourt } from './court.js';
 import { buildRoyal } from './royal.js';
+import { createDragonRide } from './dragonride.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -34,6 +35,10 @@ const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() =
 const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
 if (hero.horse && hero._horseObstacle) interior.C.dynamics.push(hero._horseObstacle(true));
+const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hooks:{
+  setMode:m => setMode(m), nextWeather:() => setWeather(nextWeather(), true),
+  photo:() => { composer.render(); renderer.domElement.toBlob(b => b && world.offer('lumiere-ejderha.png', b), 'image/png'); },
+}});
 // bütün malzemelere atmosfer yaması: sis, bulut gölgesi, yüzey çeşitliliği, temas gölgesi
 world.atmo.patchScene();
 const CASTLE_DOOR = {x:0, y:1, z:world.CZ + 10.6};
@@ -138,8 +143,9 @@ function setMode(m){
   $('photo').hidden = m !== 'photo';
   $('hud').hidden = !['play'].includes(m);
   $('touch').hidden = !(input.touch && m === 'play');
-  input.enabled = m === 'play';
+  input.enabled = m === 'play' || m === 'fly';
   if (m !== 'play') ui.prompt(null);
+  $('flyHud').hidden = m !== 'fly';
   if (m === 'pause' || m === 'title') save();
 }
 $('btnPause').addEventListener('click', () => togglePause());
@@ -253,7 +259,8 @@ function playHarpsichord(){
   m.forEach((n, i) => { audio.pluck(mtof(n), t0 + i * 0.28, 0.16, 0.9); if (i % 4 === 0) audio.pluck(mtof(n - 24), t0 + i * 0.28, 0.12, 1.4); });
   ui.toast('♪ Minuet', 2200);
 }
-function togglePause(){ if (mode === 'play') setMode('pause'); else if (mode === 'pause') setMode('play'); }
+let pauseBack = 'play';
+function togglePause(){ if (mode === 'play' || mode === 'fly'){ pauseBack = mode; setMode('pause'); } else if (mode === 'pause') setMode(pauseBack); }
 
 /* ---------- kayıt ---------- */
 function save(){
@@ -400,7 +407,7 @@ function frame(){
   world.state.wind += (wantWind - world.state.wind) * Math.min(1, dt * 0.8);
 
   if (input.take('pause')){
-    if (mode === 'play' || mode === 'pause') togglePause();
+    if (mode === 'play' || mode === 'pause' || mode === 'fly') togglePause();
     else if (mode === 'photo') $('closePhoto').click();
     else if (mode === 'gaze') endGaze();
     if (!$('journal').hidden) ui.journal(S, false);
@@ -455,6 +462,13 @@ function frame(){
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
     content.update(dt, t);
+  } else if (mode === 'fly'){
+    // ejderha uçuşu: kamera ve hareket dragonride.js'te
+    ride.update(dt, t);
+    content.update(dt, t);
+    S.elapsed += dt;
+    weatherTimer -= dt; if (weatherTimer <= 0) setWeather(nextWeather(), true);
+    saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
   } else if (mode === 'workshop' || mode === 'cinematic'){
     // tapınak çevresinde yavaş dönen kamera
     cine.t += dt;
@@ -511,4 +525,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, whistleHorse, pickInteract };

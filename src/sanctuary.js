@@ -489,15 +489,18 @@ export function buildSanctuary(world, C, hooks){
     const D = dragon, dr = D.root;
     const breath = Math.sin(t * 1.4);
     D.body.scale.set(1 + breath * 0.025, 1 + breath * 0.035, 1);
-    const wpos = dr.getWorldPosition(tmpV), dx = hero.pos.x - wpos.x, dz = hero.pos.z - wpos.z, dist = Math.hypot(dx, dz);
-    const worldYaw = dr.rotation.y + cage.rotation.y;
-    let look = 0; if (dist < 32){ look = Math.atan2(dx, dz) - worldYaw; look = Math.atan2(Math.sin(look), Math.cos(look)); look = Math.max(-1.1, Math.min(1.1, look)); }
-    D.neck.forEach((n, i) => { n.rotation.y += ((look / D.neck.length) + Math.sin(t * 0.6 + i * 0.4) * 0.03 - n.rotation.y) * Math.min(1, dt * 2); n.rotation.x = (n.userData.bx ?? 0) + Math.sin(t * 0.8 + i * 0.5) * 0.03 - (D.roar > 0 ? 0.1 : 0); });
-    D.tail.forEach((n, i) => { n.rotation.y = Math.sin(t * (D.happy > 0 ? 3 : 1.1) - i * 0.5) * (0.12 + (D.happy > 0 ? 0.08 : 0)); n.rotation.x = 0.05; });
-    const flap = D.happy > 0 ? Math.sin(t * 6) * 0.5 - 0.2 : D.roar > 0 ? -0.35 : Math.sin(t * 0.5) * 0.06;
-    D.wings.forEach(({w, sd}) => { w.rotation.z = sd * (0.5 + flap); w.rotation.y = -sd * 0.95; });
-    D.happy = Math.max(0, (D.happy || 0) - dt);
-    D.nextRoar -= dt; if (D.nextRoar <= 0 && dist < 60){ D.roar = 2.4; D.nextRoar = 25 + rnd() * 25; if (dist < 45) hooks.sfx('roar'); }
+    // binildiğinde (dragonride.js) kafes animasyonu yerine uçuş animasyonu çalışır
+    if (!D.riding){
+      const wpos = dr.getWorldPosition(tmpV), dx = hero.pos.x - wpos.x, dz = hero.pos.z - wpos.z, dist = Math.hypot(dx, dz);
+      const worldYaw = dr.rotation.y + cage.rotation.y;
+      let look = 0; if (dist < 32){ look = Math.atan2(dx, dz) - worldYaw; look = Math.atan2(Math.sin(look), Math.cos(look)); look = Math.max(-1.1, Math.min(1.1, look)); }
+      D.neck.forEach((n, i) => { n.rotation.y += ((look / D.neck.length) + Math.sin(t * 0.6 + i * 0.4) * 0.03 - n.rotation.y) * Math.min(1, dt * 2); n.rotation.x = (n.userData.bx ?? 0) + Math.sin(t * 0.8 + i * 0.5) * 0.03 - (D.roar > 0 ? 0.1 : 0); });
+      D.tail.forEach((n, i) => { n.rotation.y = Math.sin(t * (D.happy > 0 ? 3 : 1.1) - i * 0.5) * (0.12 + (D.happy > 0 ? 0.08 : 0)); n.rotation.x = 0.05; });
+      const flap = D.happy > 0 ? Math.sin(t * 6) * 0.5 - 0.2 : D.roar > 0 ? -0.35 : Math.sin(t * 0.5) * 0.06;
+      D.wings.forEach(({w, sd}) => { w.rotation.z = sd * (0.5 + flap); w.rotation.y = -sd * 0.95; });
+      D.happy = Math.max(0, (D.happy || 0) - dt);
+      D.nextRoar -= dt; if (D.nextRoar <= 0 && dist < 60){ D.roar = 2.4; D.nextRoar = 25 + rnd() * 25; if (dist < 45) hooks.sfx('roar'); }
+    }
     D.jaw.rotation.x = D.roar > 0 ? Math.min(0.55, D.jaw.rotation.x + dt * 3) : Math.max(0, D.jaw.rotation.x - dt * 2);
     // ateş
     const mouth = D.head.localToWorld(L(0, -0.05, 1.5)), dir = D.head.localToWorld(L(0, 0.5, 4.0)).sub(mouth).normalize();

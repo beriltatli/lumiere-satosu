@@ -13,7 +13,7 @@ export class Input {
     this.lookTouch = null;
     this.touchRun = false;
 
-    const ACT = {KeyE:'interact', Enter:'interact', Space:'jump', KeyJ:'journal', Tab:'journal', Escape:'pause', KeyP:'pause', KeyF:'interact', KeyV:'view', KeyH:'whistle'};
+    const ACT = {KeyE:'interact', Enter:'interact', Space:'jump', KeyJ:'journal', Tab:'journal', Escape:'pause', KeyP:'pause', KeyF:'interact', KeyV:'view', KeyH:'whistle', KeyC:'camera', KeyT:'time', KeyO:'photo'};
     addEventListener('keydown', e => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
       if (!e.repeat && ACT[e.code]) this.pressed.add(ACT[e.code]);

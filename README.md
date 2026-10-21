@@ -65,6 +65,24 @@ Terastaki ana kapıda **E** ile içeri girilir. Katlar arasında merdivenlerle y
 - **Rüzgâr:** çimen, çiçek, çayır ve ağaçlar rüzgâr yönünde dünya uzayında eğilir. Esinti dalgaları çayır boyunca ilerler. Bayraklar rüzgâra döner ve dalgalanır, taç yaprakları uçuşur. Rüzgâr hava durumuna göre değişir: yağmurda en güçlüdür.
 - **Hava ve saat:** güneşli, bulutlu, yağmurlu, gün batımı ve gece kendiliğinden döner. Her biri kendi HDRI ışığını kullanır. Yağmurda at yavaşlar ve fıskiye bulanır. Gece muhafızlar fener taşır, pencereler yanar, Ay Kapısı açılır.
 
+## Ejderha Pyra ile uçuş
+
+Ejderha kafesinin batı kapısının yanında **E** ile Pyra'ya binersin. Pyra kafesten çıkar, sen sırtındaki eyere oturursun.
+
+| Tuş | Uçuşta |
+|---|---|
+| Boşluk | Havalan / yüksel |
+| Shift | Dal (dalışta hızlanır) |
+| W / S | Hızlan / yavaşla, havada asılı kal |
+| A / D · fareyi sürükle | Dön (ejderha dönüşe yatar), fareyle yukarı aşağı da yönlendirilir |
+| F | Ateş püskürt |
+| C veya V | Kamera: binici gözü (sağ omuz üstü, boyun ve baş önde) / takip |
+| T | Zamanı hızlandır (sonraki hava ve saat) |
+| O | Fotoğraf kaydet |
+| E | İn: Pyra yere konar, sen inersin, o kafesine döner |
+
+Ekranda irtifa, hız ve yerden yükseklik ("24 m · 1,0 m/sn · yerden 20 m") ile altında bulunduğun yer ("Konum: Kız Kulesi" gibi) görünür. Bir yerin üstüne geldiğinde adı büyük harflerle belirir. Alçak uçarken binalara çarpmaz, uçtuğun yerler keşfedilmiş sayılır.
+
 ## Saray bahçeleri ve yapıları
 
 Malikâneye 15 yeni yer eklendi. Her birine ilk girdiğinde "Keşfedildi" bildirimi çıkar; keşfedilmemiş en yakın iki yer pusulada altın işaretle görünür, ilerleme görev günlüğünde (Saray bahçelerini keşfet, x/15) izlenir.
