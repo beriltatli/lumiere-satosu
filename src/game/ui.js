@@ -1,5 +1,6 @@
 // HUD, diyaloglar, görev günlüğü, pusula ve geçişler
 import { RUNES, COIN_TOTAL } from './content.js';
+import { PLACES } from '../court.js';
 
 const $ = id => document.getElementById(id);
 export const fmtTime = s => { s = Math.max(0, Math.floor(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(x).padStart(2, '0'); };
@@ -75,6 +76,7 @@ export class UI {
       const n = RUNES.filter(r => S.runes[r.id]).length;
       add('Kılıcı uyandır', 'Tapınaktaki kaideye beş rünü yerleştir. (' + n + '/5)', S.finished, '#ffffff');
       if (S.notes.cookQuest) add('Aşçı Marcel için portakal', 'Portakal serasında yere düşmüş olgun portakalları topla ve şatonun mutfağına götür. (' + Math.min(3, (S.notes.oranges || []).length) + '/3)', !!S.notes.coinMap, '#ff8a1a');
+      if ((S.notes.places || []).length) add('Saray bahçelerini keşfet', 'Gül labirenti, kuğu göleti, opera, rasathane, hamam, şarap mahzeni… Pusuladaki altın işaretleri izle. (' + S.notes.places.length + '/' + PLACES.length + ')', S.notes.places.length >= PLACES.length, '#d4af37');
       if (S.notes.princess) add('Pyra\'nın yumurtası', S.notes.egg === 'tasiniyor' ? 'Mor yumurta sende. Doğudaki kubbeli ejderha kafesinin batı kapısına götür.' : 'Prenses Aurélie, ejderha Pyra\'nın kayıp mor yumurtasının Kelebek Vadisi\'ndeki şelalenin yanında olduğunu söyledi.', S.notes.egg === 'yuvada', '#b08aff');
     }
     $('journalFoot').innerHTML = '<span>⚜ Madalyon ' + S.coins.length + '/' + COIN_TOTAL + '</span><span>Süre ' + fmtTime(S.elapsed) + '</span>';
