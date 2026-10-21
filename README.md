@@ -94,6 +94,32 @@ Malikâneye 15 yeni yer eklendi. Her birine ilk girdiğinde "Keşfedildi" bildir
 
 Sabit parçalar yükleme sırasında malzeme ve bölgeye göre tek ağlarda birleştirilir; böylece yeni alanlar çizim çağrısı sayısını az artırır.
 
+## Kraliyet yapıları
+
+Saray bahçeleri listesine 12 yer daha eklendi (toplam 27). Hepsi pusulada ve görev günlüğünde izlenir.
+
+**Güney girişi:**
+- **Kuğu Deresi ve gondol iskelesi:** malikânenin güneyinden geçen 300 m'lik mermer kenarlı kanal. Çizgili gömlekli, hasır şapkalı gondolcuların kullandığı gondollar soylu çiftleri gezdirir, kanalın uçlarında dönüş yapar. Kuğular süzülür. İskelede Gondolcu Luigi ile ya da iskelede **E** ile gondola binip sinematik bir gezintiye çıkarsın (**E** ile inersin).
+- **Kahramanlar Yolu:** kış bahçesinden kanala uzanan mermer yürüyüş yolu. 14 heykel (Augustus, Athena, Herakles, Nike, Şarlman, Leonidas, Orpheus…) servi ağaçları ve fenerlerle sıralanır; iki yanda İyon sütunlu Greko-Romen tapınakçıklar vardır. Her heykelin kaidesi okunur.
+- **Zafer Takı ve dikilitaşlar:** kanalın üstündeki kemerli köprünün ardında 16 m'lik zafer takı. Kabartma panolar, altın kemer, "VICTORIIS · LVMINIS · MDCCXXIV" yazıtı ve tepede yeşil patinalı dört atlı zafer arabası var. Dört yanda hiyeroglifli, altın uçlu dikilitaşlar yükselir.
+- **Işıldayan Gece Bahçesi:** yalnız gece açan mavi, mor ve yeşil çiçekler, ışıldayan mantarlar ve nilüferler, salkımları parlayan mor pergola, pirinç fenerler, kristal mumluklar ve ateşböcekleri. Gündüz çiçekler kapanır.
+
+**Merkez:**
+- **Saat kulesi ve çan:** 43 m'lik kule. Dört kadranı gerçek saati gösterir; ön cephedeki cam pencereden pirinç dişliler dönerken görünür. Her saat başı Lumière ezgisini çalar, sonra çan saati vurur (uzaklık arttıkça ses azalır). Saatçi Augustin ezgiyi istediğinde de çaldırır.
+
+**Kuzey (kültür mahallesi):**
+- **Diplomasi ve ziyafet pavyonu:** yüksek tavanlı, boyalı gök tavanlı, revaklı konuk evi. İçinde uzun ziyafet masası, yaldızlı sandalyeler ve mumlar, taht kürsüsü, yabancı krallıkların sancakları, dünya haritaları ve yerküre var. Şansölye Delacroix ile Venedik, Osmanlı ve İspanya elçilerini ağırlayıp antlaşmalar yaparsın (x/3).
+- **Maskeli balo ve Ayna Galerisi:** Versailles düzeninde, kemerli pencerelerin karşısında aynalarla kaplı bir duvar. Aynalar salonu gerçek zamanlı yansıtır; boyalı tavan ve beş kristal avize var. Maskeli çiftler dans eder (gece kendiliğinden, gündüz isteyince). Maske masasında kendine bir Venedik maskesi takabilirsin. Maskeli Markiz saray dedikodularını fısıldar.
+- **Simya laboratuvarı (rasathanenin yanında):** yuvarlak taş kule, yeşil ışıklı kaynayan kazan, renkli iksir şişeleri, imbik ve şifalı ot tarhları. Simyacı Bertrand ile bir ot ve bir taş seçerek iksir yaparsın: Rüzgâr İksiri seni 75 saniye hızlandırır.
+- **Kuyumcu ve terzi atölyesi:** vitrinlerde dönen elmas, safir, yakut ve zümrütler, revakta saray elbiseleri giymiş mankenler. Kuyumcu Lucien seçtiğin taşla bir kolye yapar; kolye karakterinin boynunda görünür.
+- **Uşak ve hizmetkâr akademisi:** gümüş tepsili uşaklar ve nedimeler avluda tur atarak eğitim yapar. Baş Uşak Fernand'ın teftişinde sıraya girip selam verirler.
+
+**Batı:**
+- **Av köşkü ve av arazisi:** çitle çevrili korulukta geyikler (üçü boynuzlu) ve tavşanlar serbestçe dolaşır, yaklaşınca kaçarlar. Taş ve ahşap av köşkünün sundurması, odun yığını ve boynuzlu kapısı var. Avcıbaşı Mathurin köşkün tarihini anlatır.
+
+**Yeraltı:**
+- **Gizli geçitler ve yeraltı sığınağı:** kütüphanenin kapısındaki kırmızı ciltli kitabı çekince raf döner ve merdiven aşağı iner. Meşaleli, tonozlu taş koridorlar şarap mahzenine, av arazisindeki gizli kapağa ve ranzalı, erzaklı bir sığınak odasına çıkar. Sığınaktaki sandıkta Kontes'in notu saklıdır. Geçidi bulduktan sonra mahzenden ve av arazisindeki kapaktan da girilebilir.
+
 ## Atmosfer ve ışık
 
 - **Hacimsel bulutlar:** gökyüzü, 700–1650 m arasındaki bir bulut katmanında ışın yürütülerek (ray marching) çizilir. Yoğunluk, açılışta üretilen döşenebilir 3B Perlin-Worley ve 2B örtü dokularından okunur. Güneş yönünde ışık örneklenir (Beer-Lambert, "powder" etkisi, çift yönlü Henyey-Greenstein saçılması): güneşe bakan kenarlar gümüş gibi parlar, tabanlar koyulaşır. Bulutlar rüzgâr yönünde sürüklenir, hava durumuyla örtüleri değişir: güneşlide dağınık kümülüs, bulutluda parçalı kapalı, yağmurda koyu ve kalın, gün batımında turuncu. Düşük çözünürlüklü bir hedefe çizilip sahnenin derinliğine göre birleştirilir.
@@ -114,6 +140,8 @@ src/estate.js         haras, seralar, kış bahçesi, çayırlar, bayraklar, uç
 src/interior.js       şatonun içi: katlar, merdivenler, odalar, mobilyalar
 src/sanctuary.js      ejderha kafesi, Kelebek Vadisi, Cennet Bağı, Prenses Aurélie
 src/atmosphere.js     hacimsel bulutlar, bulut gölgeleri, sis, malzeme yaması, renk düzenlemesi
+src/royal.js          kanal ve gondollar, Kahramanlar Yolu, Zafer Takı, gece bahçesi, saat kulesi, Ayna Galerisi, gizli geçitler…
+src/kit.js            ortak yapı kiti: bina, sütun, heykel, figür, tabela, birleştirme
 src/court.js          saray bahçeleri: gül labirenti, kuğu göleti, opera, balo salonu, rasathane, hamam, mahzen…
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
