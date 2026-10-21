@@ -3,6 +3,7 @@ import { createWorld } from './world.js';
 import { buildEstate } from './estate.js';
 import { buildInterior, IN } from './interior.js';
 import { buildSanctuary } from './sanctuary.js';
+import { buildCourt } from './court.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -29,6 +30,7 @@ const interior = buildInterior(world, {
 });
 hero.Cin = interior.C;
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
+const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 if (hero.horse && hero._horseObstacle) interior.C.dynamics.push(hero._horseObstacle(true));
 const CASTLE_DOOR = {x:0, y:1, z:world.CZ + 10.6};
 const castleDoorInteract = {x:0, y:1, z:world.CZ + 10.2, r:2.4, label:'Şatoya gir', show:() => true, act:() => enterCastle()};
@@ -228,7 +230,13 @@ function startGaze(){
   ui.toast('Teleskop · E ile dön', 2600);
 }
 function endGaze(){
-  gaze = null; setIndoor(true); setMode('play'); hero.snapCamera = true;
+  const sky = gaze && gaze.sky; gaze = null; if (!sky) setIndoor(true); setMode('play'); hero.snapCamera = true;
+}
+// rasathanenin teleskobu: kulenin tepesinden gökyüzüne bakış
+function startSkyGaze(p){
+  if (hero.mounted) hero.dismount();
+  gaze = {t:0, sky:p}; setMode('gaze');
+  ui.toast(world.W.night > 0.5 ? 'Teleskop · E ile dön' : 'Gündüz gökyüzü · E ile dön', 2600);
 }
 function playHarpsichord(){
   if (!audio.ctx) return;
@@ -348,7 +356,7 @@ $('btnGlb').addEventListener('click', async () => {
 function pickInteract(){
   const p = hero.pos; let best = null;
   const consider = (o, d) => { if (!best || d < best.d) best = {o, d}; };
-  const lists = hero.zone === 'ic' ? [interior.interact] : [content.interact, sanctuary.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
+  const lists = hero.zone === 'ic' ? [interior.interact] : [content.interact, sanctuary.interact, court.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
   for (const list of lists) for (const o of list){
     if ((o.zone || null) !== hero.zone || !o.show()) continue;
     if (o.y != null && Math.abs(p.y - o.y) > 2.2) continue;
@@ -397,9 +405,15 @@ function frame(){
   } else if (mode === 'gaze'){
     // teleskop: kubbenin tepesinden malikâneye geniş bir bakış
     gaze.t += dt;
+    if (gaze.sky){
+      const P = gaze.sky, a = gaze.t * 0.05;
+      camera.position.set(P.x, P.y, P.z);
+      camera.lookAt(P.x + Math.sin(a) * 40, P.y + 70 + Math.sin(gaze.t * 0.15) * 10, P.z - Math.cos(a) * 40);
+    } else {
     const a = gaze.t * 0.12 + 0.6, r = 70 + Math.sin(gaze.t * 0.3) * 10;
     camera.position.set(Math.sin(a) * r, 46 + Math.sin(gaze.t * 0.2) * 6, world.CZ + 20 + Math.cos(a) * r);
     camera.lookAt(0, 4, 10);
+    }
     if (gaze.t > 0.3 && (input.take('interact') || input.take('pause') || gaze.t > 16)) endGaze();
   } else if (mode === 'play' && !ui.dialogOpen){
     hero.frozen = false;
@@ -424,7 +438,7 @@ function frame(){
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
     ui.stats(S.elapsed, world.WEATHER[world.weatherKey].name + ' · rüzgâr ' + Math.round(6 + world.state.wind * 40) + ' km/s');
     const look = Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z);
-    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : content.markers.concat(estate.markers || [], sanctuary.markers, horseMarker())).concat(coinMarkers()));
+    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, horseMarker())).concat(coinMarkers()));
     updateOranges(dt, t);
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
@@ -458,6 +472,7 @@ function frame(){
   }
   world.update(dt, t);
   sanctuary.update(dt, t, hero);
+  court.update(dt, t, hero);
   estate.indoor = indoor;
   estate.update(dt, t, hero);
   interior.update(dt, t, hero, S, id => {
@@ -483,4 +498,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, whistleHorse, pickInteract };

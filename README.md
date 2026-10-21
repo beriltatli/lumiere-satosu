@@ -65,6 +65,35 @@ Terastaki ana kapıda **E** ile içeri girilir. Katlar arasında merdivenlerle y
 - **Rüzgâr:** çimen, çiçek, çayır ve ağaçlar rüzgâr yönünde dünya uzayında eğilir. Esinti dalgaları çayır boyunca ilerler. Bayraklar rüzgâra döner ve dalgalanır, taç yaprakları uçuşur. Rüzgâr hava durumuna göre değişir: yağmurda en güçlüdür.
 - **Hava ve saat:** güneşli, bulutlu, yağmurlu, gün batımı ve gece kendiliğinden döner. Her biri kendi HDRI ışığını kullanır. Yağmurda at yavaşlar ve fıskiye bulanır. Gece muhafızlar fener taşır, pencereler yanar, Ay Kapısı açılır.
 
+## Saray bahçeleri ve yapıları
+
+Malikâneye 15 yeni yer eklendi. Her birine ilk girdiğinde "Keşfedildi" bildirimi çıkar; keşfedilmemiş en yakın iki yer pusulada altın işaretle görünür, ilerleme görev günlüğünde (Saray bahçelerini keşfet, x/15) izlenir.
+
+**Şatonun arkası (kuzey):**
+- **Balo salonu ve kış bahçesi (Orangerie):** cam tonozlu, iki sıra altın başlıklı sütunlu, üç kristal avizeli büyük salon; sütunların arasında saksıda portakal ve limon ağaçları, dama mermer zemin. İçine yürüyerek girilir. Orkestra kürsüsünde **E**: vals çalar, dört çift dans eder.
+- **Saray operası ve sanat galerisi (batı):** altı sütunlu portik, alınlık, bakır kubbe, çatıda heykeller. Maestro Valentin bir arya çaldırır ya da galeriyi gezdirir.
+- **Kütüphane ve arşiv (doğu):** mansart çatı, gerçek saatle dönen kule saati. Arşivci Anselme el yazmalarını, şatonun tarihini ve henüz bulunmamış rünler için eski kroniklerden bir ipucu anlatır.
+- **Rasathane:** 22 m'lik taş kule, yavaşça dönen bakır kubbe ve yarığından çıkan pirinç teleskop, sekizgen harita odası, dışarıda dönen armiller küre. Astronom Hélène ile konuşup teleskoptan gökyüzüne bakılır (gece yıldızlar görünür).
+
+**Güneybatı bahçeleri:**
+- **Gül labirenti (Jardin des Roses):** Fransız bahçesi düzeninde, dört çeyreği aynalanmış simetrik çit labirenti. Güllerle kaplı çitler, ortada üç katlı fıskiyeli büyük mermer havuz, caddelerde dört küçük fıskiye ve 16 heykellik galeri (her heykelin kaidesi okunabilir), çeyreklerin köşesinde gül çardakları.
+- **Kuğu ve tavus kuşu göleti:** oval gölet, adada bakır kubbeli çay köşkü, adaya mermer kemer köprü, batıdaki dere üstünde ikinci köprü, kıyıda iki çay pavyonu. Yedi kuğu (biri siyah) yüzer; yem standında **E** ile beslenince kıyıya toplanırlar. Tavus kuşları kıyıda dolaşıp arada kuyruklarını açar.
+- **Binicilik maneji ve engel parkuru:** kum pist, beyaz çit, dikey/okser/su engelleri, çizgili tenteli tribün. Bir binici parkuru dolaşıp engellerin üstünden atlar.
+- **Satranç köşkü:** kubbeli köşkte fildişi ve abanoz takım, çimde dev satranç tahtası. Düşes Mathilde'nin tek hamlede mat problemini çöz.
+
+**Kuzeybatı ve kuzeydoğu:**
+- **Şahin yuvası (Fauconnerie):** yarı ahşap kuş evi, tüneklerde başlıklı şahinler, gökte daire çizen gökdoğanlar, dalgalanan av bayrağı. Şahinci Gaspard eldivenindeki "Mistral"ı uçurur; kuş tur atıp eldivene döner.
+- **Mermer hamam ve kaplıca:** büyük ve dört küçük kubbeli hamam, mozaik zeminli açık hava sıcak su havuzu, sütunlu galeri, yükselen buhar.
+- **Okçuluk ve bıçak atış poligonu:** dört hedefli atış alanı, tenteli atış pavyonu, bıçak tahtası. **E** ile ok at (5 okluk tur, en iyi skor kaydedilir) ya da bıçak fırlat.
+
+**Doğu (üretim):**
+- **Saray mutfağı ve gurme fırın:** tuğla mutfak, tüten bacalar, dışarıda taş ekmek fırını, ekmek tezgâhı, üzüm-portakal kasaları, sebze tarhları. Şef Antoine günün tabağını sunar.
+- **Parfüm ve esans laboratuvarı:** cam verandada bakır imbik, renkli esans şişeleri, lavanta ve gül tarhları. Mlle Isabeau ile üst, kalp ve dip notayı seçip kendi parfümünü yap.
+- **İpek ve kumaş atölyesi:** dut ağaçları, rüzgârda dalgalanan renkli ipek topları, dokuma tezgâhı. Madame Colette sana yeni bir pelerin diker; seçtiğin renk karakterin pelerinine uygulanır ve kaydedilir.
+- **Şarap mahzeni (Chai & Caveau):** taş mimarili bina, kemerli mahzen girişi, meşe fıçılar, asma örtülü tadım terası. Sommelier Bastien üç rekolteden birini tattırır.
+
+Sabit parçalar yükleme sırasında malzeme ve bölgeye göre tek ağlarda birleştirilir; böylece yeni alanlar çizim çağrısı sayısını az artırır.
+
 ## Klasörler
 
 ```
@@ -74,6 +103,7 @@ src/world.js          şato, bahçe, tapınak, muhafızlar, atlar, hava, kılı�
 src/estate.js         haras, seralar, kış bahçesi, çayırlar, bayraklar, uçuşan yapraklar
 src/interior.js       şatonun içi: katlar, merdivenler, odalar, mobilyalar
 src/sanctuary.js      ejderha kafesi, Kelebek Vadisi, Cennet Bağı, Prenses Aurélie
+src/court.js          saray bahçeleri: gül labirenti, kuğu göleti, opera, balo salonu, rasathane, hamam, mahzen…
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
 src/game/maze.js      tohumlu labirent üretimi
