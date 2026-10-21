@@ -22,13 +22,29 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
   const D = sanctuary.dragon;
   const $ = id => document.getElementById(id);
   const L = (x, y, z) => new THREE.Vector3(x, y, z);
-  const st = {active:false, pos:L(0, 0, 0), yaw:0, pitch:0, roll:0, speed:0, vy:0, grounded:true, cam:'binici', phase:0, flapLast:0, title:null, titleT:0, fire:0, home:null, fov:0, yawRate:0};
+  const st = {active:false, pos:L(0, 0, 0), yaw:0, pitch:0, roll:0, speed:0, vy:0, grounded:true, cam:'binici', phase:0, flapLast:0, title:null, titleT:0, fire:0, home:null, fov:0, yawRate:0, typed:'', flameMode:false, burst:0};
   const places = () => CORE.concat(PLACES.filter(p => p.r > 0).map(p => ({name:p.name, sub:subOf(p), x:p.x, z:p.z})));
   const camPos = L(0, 0, 0), camLook = L(0, 0, 0), tmp = L(0, 0, 0), fwd = L(0, 0, 1);
   const RIDER = L(0, 1.15, 0.85);       // gövde (body) yerel koordinatında eyer
 
   // kafes kapısının yanında: Pyra'ya bin
   sanctuary.interact.push({x:CAGE.x - CAGE.R - 1.2, z:CAGE.z + 3.2, r:2.8, label:'Pyra\'ya bin ve uç', show:() => !st.active, act:() => start()});
+
+  // Gizli: uçarken klavyeden yazılan harfleri izle; "fire" yazılınca tıklayarak alev püskürtme açılır/kapanır.
+  addEventListener('keydown', e => {
+    if (!st.active || e.repeat || !/^Key[A-Z]$/.test(e.code)) return;
+    st.typed = (st.typed + e.code.slice(3).toLowerCase()).slice(-8);
+    if (st.typed.endsWith('fire')){
+      st.typed = ''; st.flameMode = !st.flameMode;
+      input.pressed.delete('interact');            // son harf E: inişi tetiklemesin
+      if (st.flameMode){ audio.sfx('roar'); st.burst = 1.2; }
+    }
+  });
+  world.renderer.domElement.addEventListener('pointerdown', e => {
+    if (!st.active || !st.flameMode || e.button !== 0) return;
+    if (st.burst <= 0.2) audio.sfx('roar');
+    st.burst = 1.1;
+  });
 
   async function start(){
     if (st.active) return;
@@ -62,7 +78,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
       u.legL.rotation.set(0, 0, 0); u.legR.rotation.set(0, 0, 0); u.armL.rotation.x = 0; u.armR.rotation.x = 0;
       hero.zone = null; hero.teleport(p.x, C.height(p.x, p.z), p.z, st.yaw); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
       // Pyra kafesine döner
-      D.riding = false; D.roar = 0;
+      D.riding = false; D.roar = 0; D.vel = null; D.fireBoost = 1; D.fireDir = null; D.fire.material.size = 0.9;
       st.home.parent.attach(D.root); D.root.position.copy(st.home.pos); D.root.rotation.copy(st.home.rot); D.root.scale.copy(st.home.scale);
       D.legs.forEach(l => { l.rotation.x = 0; });
       camera.fov = st.fov; camera.updateProjectionMatrix();
@@ -82,9 +98,9 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     forward(fwd);
     if (st.cam === 'binici'){
       // binici gözü: ejderhanın sağ omzunun üstünden; boyun ve baş görüşün sol altında kalır
-      D.body.localToWorld(camPos.set(-0.6, 3.7, -1.8));
-      camLook.copy(camPos).addScaledVector(fwd, 30); camLook.y -= 4.2;
-      camLook.x -= Math.cos(st.yaw) * 4.5; camLook.z += Math.sin(st.yaw) * 4.5;   // bakış hafif sağa: boyun sol altta kalır
+      D.body.localToWorld(camPos.set(-1.7, 4.3, -1.6));
+      camLook.copy(camPos).addScaledVector(fwd, 30); camLook.y -= 5.5;
+      camLook.x -= Math.cos(st.yaw) * 2.5; camLook.z += Math.sin(st.yaw) * 2.5;   // bakış hafif sağa: boyun ve baş sol altta kalır
     } else {
       const back = 12 + st.speed * 0.08;
       camPos.copy(st.pos).addScaledVector(fwd.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), -back); camPos.y = st.pos.y + 5.5 + Math.max(0, -st.pitch) * 4;
@@ -103,6 +119,11 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     const fireHeld = K.has('KeyF');
     if (input.take('interact') && !fireHeld){ stop(); return; }
     if (fireHeld){ if (st.fire <= 0) audio.sfx('roar'); D.roar = Math.max(D.roar, 0.8); st.fire = 0.4; } else st.fire -= dt;
+    if (st.burst > 0){ st.burst -= dt; D.roar = Math.max(D.roar, 0.8); }
+    D.fireBoost = st.flameMode ? 2.6 : 1.6;
+    // uçarken alev ejderhanın baktığı yöne, hafif aşağı doğru çıkar; gizli modda daha iri
+    D.fireDir = (D.fireDir || L(0, 0, 0)).copy(forward(tmp)); D.fireDir.y -= 0.38; D.fireDir.normalize();
+    D.fire.material.size = st.flameMode ? 2.4 : 1.4;
 
     // dümen: A/D ve fareyle sürükleme yön verir; W hızlanır, S yavaşlar; Boşluk yükselir, Shift dalar
     // fare sürüklemesi birikir ve yavaşça söner: sürükledikçe döner/yükselir
@@ -154,6 +175,8 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     D.legs.forEach((l, i) => { l.rotation.x += ((air ? (i < 2 ? 0.9 : 1.2) : 0) - l.rotation.x) * Math.min(1, dt * 3); });
     D.neck.forEach((n, i) => { n.rotation.y += ((st.yawRate * 0.05) - n.rotation.y) * Math.min(1, dt * 3); n.rotation.x = (n.userData.bx ?? 0) + (air ? 0.07 : 0) + Math.sin(t * 1.2 + i * 0.4) * 0.02 - (D.roar > 0 ? 0.06 : 0); });
     D.tail.forEach((n, i) => { n.rotation.y = Math.sin(t * 1.6 - i * 0.45) * 0.08 - st.yawRate * 0.06; n.rotation.x = air ? -0.02 + Math.sin(st.phase - i * 0.4) * 0.03 : 0.05; });
+    // alev parçacıkları ejderhanın hızını taşısın (yoksa uçarken başın arkasında kalır)
+    forward(fwd); D.vel = (D.vel || L(0, 0, 0)).copy(fwd).multiplyScalar(st.grounded ? 0 : st.speed); D.vel.y = st.grounded ? 0 : st.vy;
     // oyuncunun konumu (gölgeler, keşifler, kayıt için)
     hero.pos.set(st.pos.x, gy, st.pos.z); hero.yaw = st.yaw;
 

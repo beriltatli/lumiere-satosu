@@ -503,14 +503,14 @@ export function buildSanctuary(world, C, hooks){
     }
     D.jaw.rotation.x = D.roar > 0 ? Math.min(0.55, D.jaw.rotation.x + dt * 3) : Math.max(0, D.jaw.rotation.x - dt * 2);
     // ateş
-    const mouth = D.head.localToWorld(L(0, -0.05, 1.5)), dir = D.head.localToWorld(L(0, 0.5, 4.0)).sub(mouth).normalize();
+    const mouth = D.head.localToWorld(L(0, -0.05, 1.5)), dir = D.fireDir ? D.fireDir.clone() : D.head.localToWorld(L(0, 0.5, 4.0)).sub(mouth).normalize();
     const breathing = D.roar > 0.3;
     D.roar = Math.max(0, D.roar - dt);
     D.fireLight.position.copy(mouth); D.fireLight.intensity = breathing ? 30 + Math.sin(t * 30) * 8 : Math.max(0, D.fireLight.intensity - dt * 60);
     for (let i = 0; i < D.FIRE; i++){
       D.fLife[i] -= dt;
       if (D.fLife[i] <= 0){
-        if (breathing){ D.fPos.set([mouth.x, mouth.y, mouth.z], i * 3); const sp = 7 + rnd() * 5; D.fVel.set([dir.x * sp + (rnd() - 0.5) * 1.5, dir.y * sp + (rnd() - 0.5) * 1.5, dir.z * sp + (rnd() - 0.5) * 1.5], i * 3); D.fLife[i] = 0.5 + rnd() * 0.5; }
+        if (breathing){ D.fPos.set([mouth.x, mouth.y, mouth.z], i * 3); const sp = (7 + rnd() * 5) * (D.fireBoost || 1), v = D.vel, j = 1.5 * Math.sqrt(D.fireBoost || 1); D.fVel.set([dir.x * sp + (rnd() - 0.5) * j + (v ? v.x : 0), dir.y * sp + (rnd() - 0.5) * j + (v ? v.y : 0), dir.z * sp + (rnd() - 0.5) * j + (v ? v.z : 0)], i * 3); D.fLife[i] = 0.5 + rnd() * 0.5; }
         else { D.fPos[i * 3 + 1] = -999; continue; }
       }
       D.fPos[i * 3] += D.fVel[i * 3] * dt; D.fPos[i * 3 + 1] += D.fVel[i * 3 + 1] * dt + dt * 1.5; D.fPos[i * 3 + 2] += D.fVel[i * 3 + 2] * dt;
