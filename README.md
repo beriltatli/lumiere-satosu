@@ -94,6 +94,16 @@ Malikâneye 15 yeni yer eklendi. Her birine ilk girdiğinde "Keşfedildi" bildir
 
 Sabit parçalar yükleme sırasında malzeme ve bölgeye göre tek ağlarda birleştirilir; böylece yeni alanlar çizim çağrısı sayısını az artırır.
 
+## Atmosfer ve ışık
+
+- **Hacimsel bulutlar:** gökyüzü, 700–1650 m arasındaki bir bulut katmanında ışın yürütülerek (ray marching) çizilir. Yoğunluk, açılışta üretilen döşenebilir 3B Perlin-Worley ve 2B örtü dokularından okunur. Güneş yönünde ışık örneklenir (Beer-Lambert, "powder" etkisi, çift yönlü Henyey-Greenstein saçılması): güneşe bakan kenarlar gümüş gibi parlar, tabanlar koyulaşır. Bulutlar rüzgâr yönünde sürüklenir, hava durumuyla örtüleri değişir: güneşlide dağınık kümülüs, bulutluda parçalı kapalı, yağmurda koyu ve kalın, gün batımında turuncu. Düşük çözünürlüklü bir hedefe çizilip sahnenin derinliğine göre birleştirilir.
+- **Bulut gölgeleri:** aynı örtü haritası güneş yönünde yere izdüşürülür; bulutların gölgesi çayır ve binaların üstünden kayar.
+- **Yüksekliğe bağlı sis:** uzaklıkla üstel artan, yükseldikçe incelen hava perspektifi; güneşe bakarken sis güneşin rengini alır.
+- **Malzemeler:** bütün yüzeylere dünya uzayında renk ve pürüzlülük çeşitliliği eklenir (düz "plastik" görünümü kırar). Zemine yakın duvarlar ve alt yüzeyler daha az gök ışığı alır (temas gölgesi). Metal olmayan yüzeyler HDRI ortam ışığını daha çok yansıtır.
+- **Gökyüzü ve güneş:** açık havada gökyüzü daha doygun mavi, zenit daha koyu. Güneş gün boyu güneyden gelir, şatonun ön cephesi aydınlanır.
+- **Görüntü:** HDR ara arabellek, 4× MSAA kenar yumuşatma, sinematik renk düzenlemesi (yumuşak S eğrisi, sıcak parlaklar/serin gölgeler, vinyet, ince film greni).
+- **Kalite ayarı:** Yüksek: yarım çözünürlüklü bulutlar, 48 adım, 4096 gölge haritası, 4× MSAA. Orta: daha az adım, 2× MSAA. Düşük: çeyrek çözünürlük, MSAA yok. WebGL2 olmayan tarayıcılarda eski düz bulut katmanı kullanılır.
+
 ## Klasörler
 
 ```
@@ -103,6 +113,7 @@ src/world.js          şato, bahçe, tapınak, muhafızlar, atlar, hava, kılı�
 src/estate.js         haras, seralar, kış bahçesi, çayırlar, bayraklar, uçuşan yapraklar
 src/interior.js       şatonun içi: katlar, merdivenler, odalar, mobilyalar
 src/sanctuary.js      ejderha kafesi, Kelebek Vadisi, Cennet Bağı, Prenses Aurélie
+src/atmosphere.js     hacimsel bulutlar, bulut gölgeleri, sis, malzeme yaması, renk düzenlemesi
 src/court.js          saray bahçeleri: gül labirenti, kuğu göleti, opera, balo salonu, rasathane, hamam, mahzen…
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
