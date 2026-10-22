@@ -166,3 +166,25 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 .fly-loc{position:absolute;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:12.5px;color:#fff;background:var(--plate);border:1px solid var(--edge);border-radius:2px;padding:4px 10px;white-space:nowrap}
 .fly-keys{position:absolute;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;gap:6px 12px;width:min(820px,calc(100vw - 32px));font-size:12px;color:rgba(255,255,255,.9);text-shadow:0 1px 4px rgba(0,0,0,.7)}
 .fly-keys span{display:flex;gap:4px;align-items:center;white-space:nowrap}
+
+/* birinci şahıs okçuluk */
+#bowHud{position:fixed;inset:0;pointer-events:none}
+.bow-cross{position:absolute;left:50%;top:50%;width:34px;height:34px;transform:translate(-50%,-50%)}
+.bow-cross i{position:absolute;background:rgba(255,255,255,.9);box-shadow:0 0 3px rgba(0,0,0,.7)}
+.bow-cross i:nth-child(1),.bow-cross i:nth-child(2){left:16px;width:2px;height:10px}
+.bow-cross i:nth-child(1){top:0}.bow-cross i:nth-child(2){bottom:0}
+.bow-cross i:nth-child(3),.bow-cross i:nth-child(4){top:16px;height:2px;width:10px}
+.bow-cross i:nth-child(3){left:0}.bow-cross i:nth-child(4){right:0}
+.bow-cross b{position:absolute;left:15px;top:15px;width:4px;height:4px;border-radius:50%;background:var(--gold-hi);box-shadow:0 0 4px rgba(0,0,0,.8)}
+.bow-pop{position:absolute;left:50%;top:38%;transform:translate(-50%,6px);font-family:var(--f-display);font-size:clamp(26px,4vw,40px);color:#fff;opacity:0;transition:opacity .25s ease,transform .25s ease;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.bow-pop.on{opacity:1;transform:translate(-50%,0)}
+.bow-pop.good{color:var(--gold-hi)}
+.bow-info{position:absolute;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-size:13px;color:#fff;background:var(--plate);border:1px solid var(--edge);border-radius:2px;padding:5px 12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bow-meter{position:absolute;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.9);text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.bow-track{width:min(280px,60vw);height:8px;border:1px solid var(--edge);background:var(--plate);border-radius:2px;overflow:hidden}
+.bow-power{height:100%;background:linear-gradient(90deg,#c8a040,var(--gold-hi));transform-origin:left center;transform:scaleX(0)}
+.bow-power.full{background:linear-gradient(90deg,var(--gold-hi),#fff6d0)}
+.bow-power.shake{animation:bowShake .12s linear infinite}
+@keyframes bowShake{0%,100%{opacity:1}50%{opacity:.6}}
+.bow-hint{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:13px;color:#fff;background:var(--plate);border:1px solid var(--edge);border-radius:2px;padding:6px 12px}
+@media (prefers-reduced-motion:reduce){.bow-power.shake{animation:none}.bow-pop{transition:none}}
