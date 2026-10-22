@@ -138,6 +138,13 @@ Saray bahçeleri listesine 12 yer daha eklendi (toplam 27). Hepsi pusulada ve g�
 **Yeraltı:**
 - **Gizli geçitler ve yeraltı sığınağı:** kütüphanenin kapısındaki kırmızı ciltli kitabı çekince raf döner ve merdiven aşağı iner. Meşaleli, tonozlu taş koridorlar şarap mahzenine, av arazisindeki gizli kapağa ve ranzalı, erzaklı bir sığınak odasına çıkar. Sığınaktaki sandıkta Kontes'in notu saklıdır. Geçidi bulduktan sonra mahzenden ve av arazisindeki kapaktan da girilebilir.
 
+## Bina içleri
+
+Kapısı olan her binaya kapının önünde **E** ile girilir; içerideki kapıda **E** ile çıkılır. Odalar ilk girişte kurulur.
+
+- **Lumière:** Saray Operası (sahne, localar, klavsen), Saray Kütüphanesi (iki katlı raflar, galeri), rasathanenin harita odası, şahin evi, mermer hamam, saray mutfağı, parfüm laboratuvarı, ipek atölyesi, şarap evi ve mahzen, saat kulesinin makine odası, av köşkü, kuyumcu ve terzi atölyesi, uşak akademisi, haras ahırı ve şato ahırı.
+- **Yùlóng Adası:** Yüce Uyum Salonu (ejderha tahtı), Huzur Salonu (imparatorluk kütüphanesi), pagodanın Buda salonu, porselen, ipek, halı ve yeşim atölyeleri, çay fermantasyon evi ve on köy evi.
+
 ## Yùlóng Adası (Çin adası)
 
 Lumière'in güneydoğusunda, güney kumsalından ~570 m açıkta, ufukta pagodası ve karst kuleleriyle görünen bir Çin imparatorluk adası. **Pyra ile uçarak** gidilir: kafesten kalk, güneydoğuya uç, adaya in (**E**). Pyra seni bırakıp Lumière'deki kafesine döner; dönmek için adanın kuzeybatısındaki **Ejderha Terası**'nda gonga vur.
@@ -148,6 +155,11 @@ Lumière'in güneydoğusunda, güney kumsalından ~570 m açıkta, ufukta pagoda
 - **Doğa:** bambu ormanı ve pandalar, Ay Köprülü lotus-koi göleti ve su köşkü, teraslı çay tepesi ve tepedeki çay köşkü, çam, erik çiçeği ve söğütler, denizden yükselen karst kuleleri.
 - **Zanaat çarşısı:** porselen (ejderha fırını), ipek (dut bahçesi), halı ve yeşim atölyeleri; çay fermantasyon evi.
 - **Yüzen pazar ve ejderha kayıkları:** Kayıkçı Lóng Bō ile Ejderha Kayığı Şenliği yarışı.
+- **Yùlóng'un ejderhası:** ~46 m uzunluğunda, kanatsız, altın pullu Çin ejderhası; yeşil-kırmızı yeleleri, beş tırnaklı ayakları ve geyik boynuzlarıyla alevli inciyi kovalayarak adanın üstünde kıvrılır.
+- **Dokuz Ejderha Duvarı** ve Öğle Kapısı önünde ejderha sarılı mermer **huabiao** sütunları; döşeli saray avlusu, bonsai saksıları, bronz turna ve kaplumbağa, sancaklar.
+- **Yùlóng Köyü:** gri tuğlalı, kiremit çatılı on köylü evi (kapılarda kırmızı yeni yıl dizeleri, "福", fenerler, kuruyan mısır ve biberler), meydanda kuyu, dilek kurdeleli yaşlı ağaç, taş değirmen, tavuklar, sebze tarlaları ve köylüler.
+- **Prenses Lìhuá** lotus göletinin kıyısında: beyaz saray makyajı, saç iğneleri, yelpaze; yelpaze dansı kültür puanı verir.
+- **Bina içleri (E ile kapıdan girilir):** Yüce Uyum Salonu'nda ejderha tahtı ve İmparator, pagodada Buda salonu, dört zanaat atölyesi, çay fermantasyon evi ve on köy evinin her biri (tuğla yatak "kang", ocak, ata sunağı, ev sahibi).
 
 **Oyun:** Ustalarla üretime başla; her aşamada doğru usulü seçmek ürünün kalitesini belirler (Sıradan / İnce / İmparatorluk). Pyra her Lumière'den gelişte heybesinde Bordeaux şarabı ve Grasse parfümü getirir; Bakan Wáng Ān'da bunları Çin hazineleriyle takas et. Takaslar **prestij**, ritüeller (çay seremonisi, çan, tütsü, meditasyon, koi, pandalar, işaret ateşleri, şenlik) **kültür puanı** kazandırır; kültür arttıkça takaslar daha değerli olur. Prestijle unvanlar açılır: Yabancı konuk → Saray misafiri → Fransız elçisi → Mandarin dostu → Ejderha Tahtı'nın dostu (Yeşim Ejderha Mührü). Ada müziği pentatoniktir.
 
@@ -176,6 +188,8 @@ src/kit.js            ortak yapı kiti: bina, sütun, heykel, figür, tabela, bi
 src/court.js          saray bahçeleri: gül labirenti, kuğu göleti, opera, balo salonu, rasathane, hamam, mahzen…
 src/china.js          Yùlóng Adası: Yasak Şehir, Çin Seddi, pagoda, bambu ve pandalar, çay tepesi, atölyeler, takas ve prestij
 src/coast.js          ada kıyısı, kumsal, okyanus, iskele (aynı denizde birden çok ada)
+src/longdragon.js     Yùlóng'un uzun Çin ejderhası (her karede yeniden dizilen gövde)
+src/rooms.js          bina içleri: kapıdan girilen, ilk girişte kurulan odalar
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
 src/game/maze.js      tohumlu labirent üretimi
