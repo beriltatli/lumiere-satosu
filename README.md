@@ -138,6 +138,19 @@ Saray bahçeleri listesine 12 yer daha eklendi (toplam 27). Hepsi pusulada ve g�
 **Yeraltı:**
 - **Gizli geçitler ve yeraltı sığınağı:** kütüphanenin kapısındaki kırmızı ciltli kitabı çekince raf döner ve merdiven aşağı iner. Meşaleli, tonozlu taş koridorlar şarap mahzenine, av arazisindeki gizli kapağa ve ranzalı, erzaklı bir sığınak odasına çıkar. Sığınaktaki sandıkta Kontes'in notu saklıdır. Geçidi bulduktan sonra mahzenden ve av arazisindeki kapaktan da girilebilir.
 
+## Yùlóng Adası (Çin adası)
+
+Lumière'in güneydoğusunda, güney kumsalından ~570 m açıkta, ufukta pagodası ve karst kuleleriyle görünen bir Çin imparatorluk adası. **Pyra ile uçarak** gidilir: kafesten kalk, güneydoğuya uç, adaya in (**E**). Pyra seni bırakıp Lumière'deki kafesine döner; dönmek için adanın kuzeybatısındaki **Ejderha Terası**'nda gonga vur.
+
+- **Yasak Şehir:** kırmızı surlar ve sarı sırlı kiremitler, Öğle Kapısı, köşe kuleleri, altın su deresi ve beş mermer köprü, üç katlı mermer teras üstünde çift saçaklı Yüce Uyum Salonu, bronz kazanlar ve aslanlar. Güneyde Paifang ve taş muhafızlı imparatorluk yolu.
+- **Çin Seddi:** doğu sırtı boyunca kıvrılır, iki ucu denize dalar (güney ucu Yaşlı Ejderha Başı). Gözetleme kuleleri ve "Göğün Altındaki İlk Geçit"; Komutan Qī işaret ateşlerini kuleden kuleye yakar.
+- **Bulut Çanı Tapınağı:** dokuz katlı pagoda, dev bronz çan, tütsü kazanı, Yin-Yang denge bahçesi.
+- **Doğa:** bambu ormanı ve pandalar, Ay Köprülü lotus-koi göleti ve su köşkü, teraslı çay tepesi ve tepedeki çay köşkü, çam, erik çiçeği ve söğütler, denizden yükselen karst kuleleri.
+- **Zanaat çarşısı:** porselen (ejderha fırını), ipek (dut bahçesi), halı ve yeşim atölyeleri; çay fermantasyon evi.
+- **Yüzen pazar ve ejderha kayıkları:** Kayıkçı Lóng Bō ile Ejderha Kayığı Şenliği yarışı.
+
+**Oyun:** Ustalarla üretime başla; her aşamada doğru usulü seçmek ürünün kalitesini belirler (Sıradan / İnce / İmparatorluk). Pyra her Lumière'den gelişte heybesinde Bordeaux şarabı ve Grasse parfümü getirir; Bakan Wáng Ān'da bunları Çin hazineleriyle takas et. Takaslar **prestij**, ritüeller (çay seremonisi, çan, tütsü, meditasyon, koi, pandalar, işaret ateşleri, şenlik) **kültür puanı** kazandırır; kültür arttıkça takaslar daha değerli olur. Prestijle unvanlar açılır: Yabancı konuk → Saray misafiri → Fransız elçisi → Mandarin dostu → Ejderha Tahtı'nın dostu (Yeşim Ejderha Mührü). Ada müziği pentatoniktir.
+
 ## Atmosfer ve ışık
 
 - **Hacimsel bulutlar:** gökyüzü, 700–1650 m arasındaki bir bulut katmanında ışın yürütülerek (ray marching) çizilir. Yoğunluk, açılışta üretilen döşenebilir 3B Perlin-Worley ve 2B örtü dokularından okunur. Güneş yönünde ışık örneklenir (Beer-Lambert, "powder" etkisi, çift yönlü Henyey-Greenstein saçılması): güneşe bakan kenarlar gümüş gibi parlar, tabanlar koyulaşır. Bulutlar rüzgâr yönünde sürüklenir, hava durumuyla örtüleri değişir: güneşlide dağınık kümülüs, bulutluda parçalı kapalı, yağmurda koyu ve kalın, gün batımında turuncu. Düşük çözünürlüklü bir hedefe çizilip sahnenin derinliğine göre birleştirilir.
@@ -161,6 +174,8 @@ src/atmosphere.js     hacimsel bulutlar, bulut gölgeleri, sis, malzeme yaması,
 src/royal.js          kanal ve gondollar, Kahramanlar Yolu, Zafer Takı, gece bahçesi, saat kulesi, Ayna Galerisi, gizli geçitler…
 src/kit.js            ortak yapı kiti: bina, sütun, heykel, figür, tabela, birleştirme
 src/court.js          saray bahçeleri: gül labirenti, kuğu göleti, opera, balo salonu, rasathane, hamam, mahzen…
+src/china.js          Yùlóng Adası: Yasak Şehir, Çin Seddi, pagoda, bambu ve pandalar, çay tepesi, atölyeler, takas ve prestij
+src/coast.js          ada kıyısı, kumsal, okyanus, iskele (aynı denizde birden çok ada)
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
 src/game/maze.js      tohumlu labirent üretimi
