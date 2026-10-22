@@ -28,17 +28,18 @@ export function buildContent(world, C, hero, ui, audio, S, hooks){
     if (opts.legs) recolor(g, M.whiteMat, new THREE.MeshStandardMaterial({color:opts.legs, roughness:0.8}));
     if (opts.hat) recolor(g, M.hatMat, new THREE.MeshStandardMaterial({color:opts.hat, roughness:0.7}));
     if (opts.plume){
-      const p = world.part(new THREE.ConeGeometry(0.07, 0.5, 8), new THREE.MeshStandardMaterial({color:opts.plume, roughness:0.6}), 0, 2.15, 0, g);
-      p.rotation.z = 0.25;
+      const p = world.part(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshStandardMaterial({color:opts.plume, roughness:0.8}), -0.05, 2.06, -0.04, g);
+      p.scale.set(0.6, 3.2, 1.2); p.rotation.set(-0.4, 0, 0.7);
     }
     scene.add(g); C.circle(x, z, 0.45);
     return g;
   }
-  const master = npc(-56, 27, 0.6, 0x6b4a2e, {noHalberd:true, legs:0xcab89a, hat:0x3b2a1c});
+  const master = npc(-56, 27, 0.6, 0x2a180c, {noHalberd:true, legs:0xcab89a, hat:0x3b2a1c});
   // ahır ustasının önlüğü
   world.part(new THREE.BoxGeometry(0.42, 0.7, 0.02), new THREE.MeshStandardMaterial({color:0x8a7a62, roughness:0.9}), 0, 1.05, 0.16, master);
   const captain = npc(0, -19.6, 0, 0x9c1b2a, {plume:0xffffff});
-  world.part(new THREE.BoxGeometry(0.56, 0.08, 0.32), M.goldMat, 0, 1.62, 0, captain);
+  { const gor = world.part(new THREE.TorusGeometry(0.075, 0.018, 6, 20, Math.PI), M.goldMat, 0, 1.585, 0.12, captain); gor.rotation.set(0.3, 0, Math.PI); gor.scale.set(1, 0.7, 1);
+    const sash = world.part(new THREE.BoxGeometry(0.06, 0.78, 0.015), M.goldMat, 0, 1.25, 0.17, captain); sash.rotation.z = 0.55; }
 
   /* ---------- rün nesneleri ---------- */
   const runeObjs = {};

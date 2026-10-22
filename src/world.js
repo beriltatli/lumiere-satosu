@@ -5,6 +5,7 @@ import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflar
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -14,6 +15,7 @@ import * as fflate from 'fflate';
 import { COURT_ZONES } from './court.js';
 import { ROYAL_ZONES } from './royal.js';
 import { createAtmosphere } from './atmosphere.js';
+import { SHORE_Z } from './sea.js';
 
 const THREE = { ...T, Sky, GLTFExporter, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, GammaCorrectionShader };
 
@@ -134,7 +136,10 @@ function mesh(geo, mat, x, y, z, parent, shadow = true){
 }
 
 /* ground */
-const ground = mesh(new THREE.PlaneGeometry(2400, 2400), groundMat, 0, 0, 0, scene, false); ground.rotation.x = -Math.PI/2;
+// zemin güneyde kumsalın altında biter (z = SHORE_Z - 16); ötesi deniz
+const GROUND_Z1 = SHORE_Z - 16, GROUND_D = 1200 + GROUND_Z1;
+const groundGeo = new THREE.PlaneGeometry(2400, GROUND_D); { const uv = groundGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * GROUND_D / 2400); }
+const ground = mesh(groundGeo, groundMat, 0, 0, (GROUND_Z1 - 1200) / 2, scene, false); ground.rotation.x = -Math.PI/2;
 const gravel = mesh(new THREE.PlaneGeometry(76, 74), gravelMat, 0, 0.03, 14, garden, false); gravel.rotation.x = -Math.PI/2;
 gravelMat.map.repeat.set(20, 20);
 const tGravel = mesh(new THREE.CircleGeometry(13, 64), gravelMat, TEMPLE.x, 0.05, TEMPLE.z, garden, false); tGravel.rotation.x = -Math.PI/2;
@@ -254,7 +259,7 @@ const PARTERRES = [
 ];
 const colliders = {boxes:[], circles:[]};
 // Ek alanlar (haras, seralar, kış bahçesi) için ağaçsız bölgeler [x0, z0, x1, z1]
-const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES];
+const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES, [-2000, SHORE_Z - 30, 2000, 4000]];
 const timeU = {value:0}, windU = {value:0.35};
 // Rüzgâr: yer değiştirme dünya uzayında uygulanır (örnekler rastgele dönük olsa da hepsi aynı yöne eğilir).
 // Rüzgâr yönünde ilerleyen esinti dalgaları çimen ve çiçeklerde "dalga" deseni oluşturur.
@@ -587,55 +592,183 @@ const redMat = new THREE.MeshStandardMaterial({color:0xa8182a, roughness:0.6});
 const shaftMat = new THREE.MeshStandardMaterial({color:0x5a3a22, roughness:0.7});
 const steelMat = new THREE.MeshStandardMaterial({color:0xc8ccd2, metalness:1, roughness:0.25});
 function part(geo, mat, x, y, z, parent){ const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; parent.add(m); return m; }
-function makeGuard(){
-  const g = new THREE.Group(), u = {};
-  ['L', 'R'].forEach((side, i) => {
-    const sx = i ? 0.11 : -0.11, leg = new THREE.Group(); leg.position.set(sx, 0.95, 0); g.add(leg);
-    part(new THREE.BoxGeometry(0.16, 0.5, 0.18), whiteMat, 0, -0.25, 0, leg);
-    part(new THREE.BoxGeometry(0.17, 0.46, 0.21), bootMat, 0, -0.72, 0.02, leg);
-    u['leg' + side] = leg;
-    const arm = new THREE.Group(); arm.position.set(i ? 0.3 : -0.3, 1.56, 0); g.add(arm);
-    part(new THREE.BoxGeometry(0.13, 0.5, 0.15), coatMat, 0, -0.25, 0, arm);
-    part(new THREE.BoxGeometry(0.14, 0.1, 0.16), redMat, 0, -0.5, 0, arm);
-    part(new THREE.SphereGeometry(0.055, 8, 6), skinMat, 0, -0.6, 0, arm);
-    u['arm' + side] = arm;
+
+/* ---------- ayrıntılı karakter: parçalar bir kez birleştirilir, tüm karakterler paylaşır ---------- */
+const linenMat = new THREE.MeshStandardMaterial({color:0xf4f1ea, roughness:0.85});
+const eyeWMat = new THREE.MeshStandardMaterial({color:0xefeae2, roughness:0.25});
+const irisMat = new THREE.MeshStandardMaterial({color:0x1c140e, roughness:0.15});
+const lipMat = new THREE.MeshStandardMaterial({color:0x9a5a50, roughness:0.55});
+const leatherMat = new THREE.MeshStandardMaterial({color:0x2a1a10, roughness:0.6});
+const hairMats = [0x3a2616, 0x1c1410, 0x5a3c22, 0x8a6a42, 0xd6d0c6, 0x2a201a, 0x6e6458].map(c => new THREE.MeshStandardMaterial({color:c, roughness:0.72}));
+const skinMats = [skinMat, ...[0xe0b094, 0xc89272, 0xd4a07e, 0xb98462].map(c => new THREE.MeshStandardMaterial({color:c, roughness:0.68}))];
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _v = new THREE.Vector3(), _s = new THREE.Vector3();
+function Kit(){
+  const parts = {};
+  const P = (grp, key, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1, base) => {
+    _m4.compose(_v.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz, 'YXZ')), _s.set(sx, sy, sz));
+    if (base) _m4.premultiply(base);
+    const c = geo.clone(); c.applyMatrix4(_m4);
+    if (!parts[grp]) parts[grp] = {}; if (!parts[grp][key]) parts[grp][key] = []; parts[grp][key].push(c);
+  };
+  const done = () => { const o = {}; for (const g in parts){ o[g] = {}; for (const k in parts[g]) o[g][k] = mergeBufferGeometries(parts[g][k], false); } return o; };
+  return {P, done};
+}
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const RIG = (() => {
+  const {P, done} = Kit();
+  /* bacak (kalça ekseninde) */
+  P('leg', 'white', new THREE.CylinderGeometry(0.086, 0.066, 0.44, 12), 0, -0.22, 0);
+  P('leg', 'white', new THREE.SphereGeometry(0.067, 10, 8), 0, -0.44, 0.005);
+  P('leg', 'boot', new THREE.LatheGeometry([V2(0, -0.9), V2(0.06, -0.9), V2(0.062, -0.8), V2(0.068, -0.62), V2(0.084, -0.47), V2(0.104, -0.4), V2(0.096, -0.39), V2(0, -0.39)], 14));
+  P('leg', 'boot', new THREE.SphereGeometry(0.07, 12, 8), 0, -0.905, 0.07, 0, 0, 0, 0.82, 0.55, 1.75);
+  P('leg', 'boot', new THREE.BoxGeometry(0.115, 0.03, 0.26), 0, -0.935, 0.06);
+  P('leg', 'gold', new THREE.BoxGeometry(0.05, 0.03, 0.012), 0, -0.86, 0.13, -0.5);
+  /* kollar (omuz ekseninde), sd: -1 sol, +1 sağ */
+  [['armL', -1], ['armR', 1]].forEach(([grp, sd]) => {
+    P(grp, 'coat', new THREE.SphereGeometry(0.086, 12, 10), 0, 0, 0);
+    P(grp, 'coat', new THREE.CylinderGeometry(0.068, 0.058, 0.3, 12), 0, -0.15, 0, 0, 0, sd * 0.04);
+    P(grp, 'coat', new THREE.SphereGeometry(0.058, 10, 8), 0, -0.3, 0);
+    P(grp, 'coat', new THREE.CylinderGeometry(0.056, 0.047, 0.26, 12), 0, -0.425, 0.032, -0.25);
+    P(grp, 'red', new THREE.CylinderGeometry(0.077, 0.068, 0.11, 14), 0, -0.52, 0.058, -0.25);
+    P(grp, 'gold', new THREE.TorusGeometry(0.072, 0.006, 4, 18), 0, -0.468, 0.045, Math.PI / 2 - 0.25);
+    P(grp, 'linen', new THREE.CylinderGeometry(0.048, 0.066, 0.045, 12, 1, true), 0, -0.59, 0.076, -0.25);
+    P(grp, 'skin', new THREE.SphereGeometry(0.045, 10, 8), 0, -0.64, 0.088, -0.25, 0, 0, 0.75, 1.15, 0.5);
+    P(grp, 'skin', new THREE.SphereGeometry(0.036, 10, 8), 0, -0.69, 0.1, -0.35, 0, 0, 0.72, 1.0, 0.45);
+    P(grp, 'skin', new THREE.CylinderGeometry(0.014, 0.012, 0.055, 6), -sd * 0.03, -0.635, 0.11, -0.3, 0, sd * 0.55);
   });
-  part(new THREE.BoxGeometry(0.48, 0.64, 0.28), coatMat, 0, 1.3, 0, g);
-  part(new THREE.BoxGeometry(0.52, 0.34, 0.31), coatMat, 0, 0.9, -0.01, g);
-  part(new THREE.BoxGeometry(0.2, 0.5, 0.02), whiteMat, 0, 1.3, 0.145, g);
-  [-1, 1].forEach(s => { const b = part(new THREE.BoxGeometry(0.05, 0.78, 0.02), whiteMat, 0, 1.28, 0.152, g); b.rotation.z = s * 0.62; });
-  part(new THREE.BoxGeometry(0.5, 0.06, 0.3), whiteMat, 0, 1.0, 0, g);
-  [-1, 1].forEach(s => part(new THREE.BoxGeometry(0.14, 0.04, 0.14), goldMat, s * 0.27, 1.63, 0, g));
-  part(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 10), whiteMat, 0, 1.66, 0, g);
-  part(new THREE.SphereGeometry(0.13, 16, 12), skinMat, 0, 1.8, 0, g);
-  const hat = part(new THREE.CylinderGeometry(0.26, 0.26, 0.15, 3, 1), hatMat, 0, 1.96, 0, g); hat.scale.set(1.3, 1, 0.55); hat.rotation.y = Math.PI/2;
-  part(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 12), redMat, 0.0, 1.97, 0.13, g).rotation.x = Math.PI/2;
-  const hal = new THREE.Group(); hal.position.set(0, -0.6, 0.07); u.armR.add(hal);
+  /* gövde */
+  const B = 'body';
+  P(B, 'white', new THREE.SphereGeometry(0.18, 16, 12), 0, 0.98, 0, 0, 0, 0, 1.05, 0.7, 0.8);
+  const torso = [V2(0, 0.96), V2(0.19, 0.97), V2(0.176, 1.07), V2(0.2, 1.22), V2(0.226, 1.38), V2(0.216, 1.52), V2(0.17, 1.6), V2(0.075, 1.645), V2(0, 1.65)];
+  P(B, 'coat', new THREE.LatheGeometry(torso, 24), 0, 0, 0, 0, 0, 0, 1, 1, 0.72);
+  const off = (pts, d) => pts.slice(1, -2).map(p => V2(p.x + d, p.y));
+  P(B, 'white', new THREE.LatheGeometry(off(torso, 0.006), 10, -0.5, 1.0), 0, 0, 0, 0, 0, 0, 1, 1, 0.72);
+  [-1, 1].forEach(sd => P(B, 'red', new THREE.LatheGeometry(off(torso, 0.01).slice(1), 4, sd > 0 ? 0.48 : -0.68, 0.2), 0, 0, 0, 0, 0, 0, 1, 1, 0.72));
+  // etek (arkada ve yanlarda), içi kırmızı astar
+  P(B, 'coat', new THREE.LatheGeometry([V2(0.205, 1.0), V2(0.25, 0.8), V2(0.315, 0.56)], 22, 0.55, Math.PI * 2 - 1.1), 0, 0, 0, 0, 0, 0, 1, 1, 0.82);
+  P(B, 'red', new THREE.LatheGeometry([V2(0.305, 0.56), V2(0.242, 0.8), V2(0.197, 1.0)], 22, 0.55, Math.PI * 2 - 1.1), 0, 0, 0, 0, 0, 0, 1, 1, 0.82);
+  // düğmeler, kemer, çapraz kayışlar, apoletler
+  for (let i = 0; i < 7; i++) P(B, 'gold', new THREE.SphereGeometry(0.012, 8, 6), 0, 1.06 + i * 0.065, 0.15 + (i < 4 ? i * 0.004 : 0.016 - (i - 4) * 0.002));
+  [-1, 1].forEach(sd => { for (let i = 0; i < 4; i++) P(B, 'gold', new THREE.SphereGeometry(0.011, 8, 6), sd * (0.1 + i * 0.006), 1.2 + i * 0.09, 0.148); });
+  [-1, 1].forEach(sd => P(B, 'white', new THREE.BoxGeometry(0.034, 0.74, 0.012), 0, 1.28, 0.166, 0, 0, sd * 0.62));
+  P(B, 'white', new THREE.TorusGeometry(0.19, 0.02, 6, 32), 0, 1.0, 0, Math.PI / 2, 0, 0, 1, 0.74, 1);
+  P(B, 'gold', new THREE.BoxGeometry(0.065, 0.05, 0.016), 0, 1.0, 0.148);
+  [-1, 1].forEach(sd => {
+    P(B, 'gold', new THREE.CylinderGeometry(0.075, 0.082, 0.026, 14), sd * 0.262, 1.605, 0, 0, 0, sd * 0.28);
+    P(B, 'gold', new THREE.CylinderGeometry(0.086, 0.074, 0.065, 14, 1, true), sd * 0.275, 1.565, 0, 0, 0, sd * 0.28);
+  });
+  // boyun, kravat, baş
+  P(B, 'skin', new THREE.CylinderGeometry(0.052, 0.058, 0.1, 10), 0, 1.68, -0.005);
+  P(B, 'linen', new THREE.CylinderGeometry(0.062, 0.066, 0.05, 12), 0, 1.65, 0);
+  [0, 1, 2, 3].forEach(i => P(B, 'linen', new THREE.SphereGeometry(0.034 - i * 0.004, 10, 6), 0, 1.615 - i * 0.034, 0.148 - i * 0.002, 0, 0, 0, 1.3, 0.55, 0.45));
+  P(B, 'skin', new THREE.SphereGeometry(0.118, 24, 18), 0, 1.8, 0, 0, 0, 0, 0.9, 1.06, 1.0);
+  P(B, 'skin', new THREE.SphereGeometry(0.088, 16, 12), 0, 1.738, 0.024, 0, 0, 0, 0.95, 0.8, 1.0);
+  P(B, 'skin', new THREE.SphereGeometry(0.02, 8, 6), 0, 1.788, 0.112, -0.25, 0, 0, 0.8, 1.5, 1.05);
+  P(B, 'skin', new THREE.SphereGeometry(0.017, 8, 6), 0, 1.767, 0.122);
+  [-1, 1].forEach(sd => {
+    P(B, 'skin', new THREE.SphereGeometry(0.028, 10, 8), sd * 0.105, 1.795, -0.002, 0, 0, 0, 0.45, 1.0, 0.75);
+    P(B, 'eye', new THREE.SphereGeometry(0.019, 12, 8), sd * 0.038, 1.81, 0.1, 0, 0, 0, 1.15, 0.75, 0.6);
+    P(B, 'iris', new THREE.SphereGeometry(0.0105, 10, 8), sd * 0.038, 1.81, 0.1105);
+    P(B, 'hair', new THREE.BoxGeometry(0.042, 0.009, 0.012), sd * 0.04, 1.838, 0.104, 0, 0, -sd * 0.12);
+    P(B, 'skin', new THREE.SphereGeometry(0.022, 8, 6), sd * 0.055, 1.768, 0.092, 0, 0, 0, 1.0, 0.7, 0.6);
+  });
+  P(B, 'lip', new THREE.BoxGeometry(0.044, 0.009, 0.012), 0, 1.748, 0.106);
+  // saç: bukleli yanlar, arkada kurdeleli at kuyruğu (18. yüzyıl)
+  P(B, 'hair', new THREE.SphereGeometry(0.124, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), 0, 1.81, -0.008, 0, 0, 0, 0.93, 1.06, 1.02);
+  P(B, 'hair', new THREE.SphereGeometry(0.127, 20, 14, Math.PI, Math.PI, 0, Math.PI * 0.72), 0, 1.8, -0.01, 0, 0, 0, 0.93, 1.06, 1.03);
+  [-1, 1].forEach(sd => [1.785, 1.745].forEach(y => P(B, 'hair', new THREE.CylinderGeometry(0.021, 0.021, 0.075, 10), sd * 0.108, y, -0.02, Math.PI / 2)));
+  P(B, 'hair', new THREE.CylinderGeometry(0.022, 0.013, 0.17, 8), 0, 1.66, -0.125, 0.22);
+  [-1, 1].forEach(sd => P(B, 'iris', new THREE.SphereGeometry(0.022, 8, 6), sd * 0.026, 1.735, -0.128, 0, 0, sd * 0.4, 1.6, 0.8, 0.5));
+  /* üç köşeli şapka */
+  P('hat', 'hat', new THREE.SphereGeometry(0.124, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), 0, 1.895, 0, 0, 0, 0, 1, 0.78, 1.05);
+  for (let k = 0; k < 3; k++){
+    const th = Math.PI / 3 + k * Math.PI * 2 / 3;
+    const base = new THREE.Matrix4().compose(new THREE.Vector3(Math.sin(th) * 0.148, 1.94, Math.cos(th) * 0.148), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.38, th, 0, 'YXZ')), new THREE.Vector3(1, 1, 1));
+    P('hat', 'hat', new THREE.BoxGeometry(0.31, 0.115, 0.018), 0, 0, 0, 0, 0, 0, 1, 1, 1, base);
+    P('hat', 'hatGold', new THREE.BoxGeometry(0.31, 0.014, 0.024), 0, 0.058, 0, 0, 0, 0, 1, 1, 1, base);
+    if (k === 0) P('hat', 'hatRed', new THREE.CylinderGeometry(0.032, 0.032, 0.012, 14), 0.06, 0.01, 0.012, Math.PI / 2, 0, 0, 1, 1, 1, base);
+  }
+  return done();
+})();
+// şapka kendi mesh'inde 1.9 m'nin üstünde dursun: kit/court NPC'leri şapkayı o.position.y > 1.9 ile gizler
+const HAT_Y = 1.94;
+Object.values(RIG.hat).forEach(geo => geo.translate(0, -HAT_Y, 0));
+let rigN = 0;
+function makeGuard(opts = {}){
+  const g = new THREE.Group(), u = {}, n = rigN++;
+  const mats = {coat:coatMat, white:whiteMat, red:redMat, gold:goldMat, boot:bootMat, linen:linenMat, eye:eyeWMat, iris:irisMat, lip:lipMat, hat:hatMat, hatGold:goldMat, hatRed:redMat,
+    skin:skinMats[n % skinMats.length], hair:opts.hair != null ? new THREE.MeshStandardMaterial({color:opts.hair, roughness:0.72}) : hairMats[(n * 3) % hairMats.length]};
+  const SMALL = {eye:1, iris:1, lip:1, gold:1, linen:1};
+  const build = (tpl, parent) => { const out = {}; for (const k in tpl){ const m = new THREE.Mesh(tpl[k], mats[k]); m.castShadow = !SMALL[k]; m.receiveShadow = !SMALL[k]; parent.add(m); out[k] = m; } return out; };
+  build(RIG.body, g);
+  ['L', 'R'].forEach((side, i) => {
+    const leg = new THREE.Group(); leg.position.set(i ? 0.11 : -0.11, 0.95, 0); g.add(leg); build(RIG.leg, leg); u['leg' + side] = leg;
+    const arm = new THREE.Group(); arm.position.set(i ? 0.3 : -0.3, 1.56, 0); g.add(arm); build(RIG['arm' + side], arm); u['arm' + side] = arm;
+  });
+  const hm = build({hat:RIG.hat.hat}, g).hat;
+  hm.position.y = HAT_Y;
+  ['hatGold', 'hatRed'].forEach(k => { const m = new THREE.Mesh(RIG.hat[k], mats[k]); hm.add(m); });
+  u.hat = hm; u.skin = mats.skin; u.hair = mats.hair;
+  const hal = new THREE.Group(); hal.position.set(0, -0.62, 0.09); u.armR.add(hal);
   part(new THREE.CylinderGeometry(0.022, 0.022, 2.4, 6), shaftMat, 0, 0.5, 0, hal);
   part(new THREE.BoxGeometry(0.03, 0.3, 0.2), steelMat, 0, 1.6, 0.08, hal);
   part(new THREE.ConeGeometry(0.04, 0.32, 6), steelMat, 0, 1.85, 0, hal);
+  part(new THREE.SphereGeometry(0.03, 8, 6), goldMat, 0, 1.42, 0, hal);
   g.userData = u; return g;
 }
+
+/* ---------- ayrıntılı at ---------- */
+const HORSE = (() => {
+  const {P, done} = Kit();
+  P('body', 'coat', new THREE.CapsuleGeometry(0.42, 1.0, 8, 18), 0, 1.45, 0, Math.PI / 2);
+  P('body', 'coat', new THREE.SphereGeometry(0.45, 18, 12), 0, 1.5, 0.6, 0, 0, 0, 0.95, 1.06, 1.0);
+  P('body', 'coat', new THREE.SphereGeometry(0.47, 18, 12), 0, 1.53, -0.62, 0, 0, 0, 1.0, 1.0, 1.05);
+  P('body', 'coat', new THREE.SphereGeometry(0.3, 12, 8), 0, 1.78, 0.42, 0, 0, 0, 0.7, 0.55, 1.3);
+  [-1, 1].forEach(sd => { P('body', 'coat', new THREE.SphereGeometry(0.26, 12, 8), sd * 0.24, 1.42, -0.7, 0, 0, 0, 0.6, 1.2, 1); P('body', 'coat', new THREE.SphereGeometry(0.22, 12, 8), sd * 0.22, 1.38, 0.68, 0, 0, 0, 0.6, 1.2, 1); });
+  // bacak (eklem: gövde altı)
+  P('leg', 'coat', new THREE.CylinderGeometry(0.13, 0.085, 0.5, 10), 0, -0.18, 0);
+  P('leg', 'coat', new THREE.SphereGeometry(0.085, 10, 8), 0, -0.46, 0);
+  P('leg', 'coat', new THREE.CylinderGeometry(0.058, 0.054, 0.44, 8), 0, -0.7, 0);
+  P('leg', 'coat', new THREE.SphereGeometry(0.066, 10, 8), 0, -0.94, 0, 0, 0, 0, 1, 0.9, 1.15);
+  P('leg', 'coat', new THREE.CylinderGeometry(0.05, 0.06, 0.13, 8), 0, -1.03, 0.012, 0.2);
+  P('leg', 'hoof', new THREE.CylinderGeometry(0.066, 0.085, 0.1, 12), 0, -1.135, 0.02);
+  // boyun ve yele
+  P('neck', 'coat', new THREE.CylinderGeometry(0.19, 0.3, 0.98, 14), 0, 0.47, 0);
+  P('neck', 'coat', new THREE.SphereGeometry(0.2, 12, 10), 0, 0.9, 0, 0, 0, 0, 0.9, 0.8, 1);
+  for (let i = 0; i < 10; i++) P('neck', 'mane', new THREE.BoxGeometry(0.035, 0.13, 0.15), 0.035, 0.08 + i * 0.092, -0.2 + i * 0.004, 0, 0, 0.35 + (i % 3) * 0.08);
+  // baş (+y burna doğru, -z alın tarafı)
+  const H = 'head';
+  P(H, 'coat', new THREE.SphereGeometry(0.15, 14, 10), 0, 0.05, 0.0, 0, 0, 0, 0.85, 1.0, 1.0);
+  P(H, 'coat', new THREE.SphereGeometry(0.12, 12, 10), 0, 0.12, 0.07, 0, 0, 0, 0.82, 1.1, 0.95);
+  P(H, 'coat', new THREE.CylinderGeometry(0.105, 0.13, 0.42, 14), 0, 0.3, 0.02);
+  P(H, 'coat', new THREE.SphereGeometry(0.115, 14, 10), 0, 0.52, 0.03, 0, 0, 0, 0.92, 0.85, 1.0);
+  P(H, 'dark', new THREE.BoxGeometry(0.16, 0.008, 0.05), 0, 0.56, 0.11);
+  [-1, 1].forEach(sd => {
+    P(H, 'eye', new THREE.SphereGeometry(0.03, 10, 8), sd * 0.118, 0.06, -0.04, 0, 0, 0, 0.6, 1, 1);
+    P(H, 'dark', new THREE.SphereGeometry(0.022, 8, 6), sd * 0.045, 0.6, -0.05, 0, 0, 0, 1, 1.2, 0.7);
+    P(H, 'coat', new THREE.ConeGeometry(0.045, 0.17, 8), sd * 0.07, -0.06, -0.13, -1.2, 0, sd * 0.15);
+    P(H, 'leather', new THREE.BoxGeometry(0.012, 0.42, 0.024), sd * 0.118, 0.24, 0.0);
+    P(H, 'gold', new THREE.TorusGeometry(0.026, 0.006, 6, 14), sd * 0.11, 0.5, 0.07, 0, Math.PI / 2, 0);
+  });
+  P(H, 'leather', new THREE.TorusGeometry(0.118, 0.012, 6, 22), 0, 0.44, 0.03, Math.PI / 2, 0, 0, 1, 1, 1.05);
+  P(H, 'leather', new THREE.TorusGeometry(0.145, 0.011, 6, 22), 0, 0.02, 0.0, Math.PI / 2, 0, 0, 1, 1, 1.0);
+  P(H, 'mane', new THREE.BoxGeometry(0.06, 0.15, 0.025), 0, 0.02, -0.16, -0.5);
+  // kuyruk
+  P('tail', 'mane', new THREE.CylinderGeometry(0.05, 0.1, 0.25, 8), 0, -0.12, 0);
+  for (let i = 0; i < 7; i++){ const a = i / 7 * Math.PI * 2; P('tail', 'mane', new THREE.CylinderGeometry(0.018, 0.034, 0.78, 6), Math.cos(a) * 0.035, -0.6, Math.sin(a) * 0.035, Math.sin(a) * 0.06, 0, Math.cos(a) * 0.06); }
+  return done();
+})();
+const horseEye = new THREE.MeshStandardMaterial({color:0x120c08, roughness:0.1});
 function makeHorse(coat, mane){
   const g = new THREE.Group(), u = {legs:[]};
-  const cm = new THREE.MeshStandardMaterial({color:coat, roughness:0.6}), mm = new THREE.MeshStandardMaterial({color:mane, roughness:0.8});
-  const body = part(new THREE.CapsuleGeometry(0.42, 1.15, 6, 14), cm, 0, 1.45, 0, g); body.rotation.x = Math.PI/2;
-  part(new THREE.SphereGeometry(0.46, 14, 10), cm, 0, 1.5, -0.62, g);
-  [[-0.22, 0.6], [0.22, 0.6], [-0.22, -0.62], [0.22, -0.62]].forEach(([x, z]) => {
-    const leg = new THREE.Group(); leg.position.set(x, 1.25, z); g.add(leg);
-    const lg = new THREE.CylinderGeometry(0.085, 0.06, 1.1, 8); lg.translate(0, -0.55, 0);
-    part(lg, cm, 0, 0, 0, leg); part(new THREE.CylinderGeometry(0.08, 0.095, 0.12, 8), bootMat, 0, -1.13, 0, leg);
-    u.legs.push(leg);
-  });
-  const neck = new THREE.Group(); neck.position.set(0, 1.62, 0.78); neck.rotation.x = 0.55; g.add(neck);
-  const ng = new THREE.CylinderGeometry(0.17, 0.27, 0.95, 10); ng.translate(0, 0.47, 0); part(ng, cm, 0, 0, 0, neck);
-  part(new THREE.BoxGeometry(0.07, 0.85, 0.12), mm, 0, 0.5, -0.17, neck);
-  const head = new THREE.Group(); head.position.set(0, 0.9, 0); head.rotation.x = 0.95; neck.add(head);
-  const hg = new THREE.BoxGeometry(0.24, 0.62, 0.3); hg.translate(0, 0.28, 0.02); part(hg, cm, 0, 0, 0, head);
-  [-1, 1].forEach(s => { const e = part(new THREE.ConeGeometry(0.05, 0.16, 6), cm, s * 0.08, -0.02, -0.14, head); e.rotation.x = -1.2; });
-  const tail = new THREE.Group(); tail.position.set(0, 1.62, -1.02); tail.rotation.x = 0.35; g.add(tail);
-  const tg = new THREE.CylinderGeometry(0.04, 0.13, 0.85, 8); tg.translate(0, -0.42, 0); part(tg, mm, 0, 0, 0, tail);
-  u.neck = neck; u.tail = tail; g.userData = u; return g;
+  const mats = {coat:new THREE.MeshStandardMaterial({color:coat, roughness:0.55}), mane:new THREE.MeshStandardMaterial({color:mane, roughness:0.8}), hoof:bootMat, eye:horseEye, dark:irisMat, leather:leatherMat, gold:goldMat};
+  const build = (tpl, parent) => { for (const k in tpl){ const m = new THREE.Mesh(tpl[k], mats[k]); m.castShadow = k === 'coat' || k === 'mane'; m.receiveShadow = k === 'coat'; parent.add(m); } };
+  build(HORSE.body, g);
+  [[-0.22, 0.6], [0.22, 0.6], [-0.22, -0.62], [0.22, -0.62]].forEach(([x, z]) => { const leg = new THREE.Group(); leg.position.set(x, 1.25, z); g.add(leg); build(HORSE.leg, leg); u.legs.push(leg); });
+  const neck = new THREE.Group(); neck.position.set(0, 1.62, 0.78); neck.rotation.x = 0.55; g.add(neck); build(HORSE.neck, neck);
+  const head = new THREE.Group(); head.position.set(0, 0.9, 0); head.rotation.x = 0.95; neck.add(head); build(HORSE.head, head);
+  const tail = new THREE.Group(); tail.position.set(0, 1.62, -1.02); tail.rotation.x = 0.35; g.add(tail); build(HORSE.tail, tail);
+  u.neck = neck; u.tail = tail; u.head = head; g.userData = u; return g;
 }
 const guards = [], horses = [];
 function addGuard(x, z, ry, path, opts){
