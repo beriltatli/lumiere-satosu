@@ -2,6 +2,7 @@
 // opera ve sanat galerisi, balo salonu (orangerie), rasathane, kütüphane ve arşiv, binicilik maneji,
 // hamam, okçuluk poligonu, satranç köşkü, saray mutfağı, parfüm laboratuvarı ve ipek atölyesi.
 import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { doorway } from './doors.js';
 
 export const ROSE = {x:-68, z:118};            // Jardin à la française (güneybatı)
 export const SWAN = {x:-142, z:150, rx:20, rz:13};
@@ -42,6 +43,7 @@ export const PLACES = [
 export function buildCourt(world, C, hooks){
   const { THREE, scene, materials:M, windMat } = world;
   const root = new THREE.Group(); root.name = 'SarayBahceleri'; scene.add(root);
+  const doors = {};   // bina kapılarının önü: içleri rooms-lumiere.js bağlar
   let seed = 1724; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const L = (x, y, z) => new THREE.Vector3(x, y, z);
   const interact = [], markers = [], updaters = [];
@@ -122,7 +124,7 @@ export function buildCourt(world, C, hooks){
   function frustum(w, d, h, inset){ const g = new THREE.BoxGeometry(w, h, d); const p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) > 0){ p.setX(i, p.getX(i) * (1 - inset * 2 / w)); p.setZ(i, p.getZ(i) * (1 - inset * 2 / d)); } g.computeVertexNormals(); return g; }
   function gableGeo(w, d, h){ const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.closePath(); const g = new THREE.ExtrudeGeometry(s, {depth:d, bevelEnabled:false}); g.translate(0, 0, -d / 2); return g; }
   /** Dikdörtgen bina: kapı yerel +z yüzünde. Çarpışma kutusu ve pencereler dahil. */
-  function hall({x, z, w, d, h, rot = 0, wall = plaster, roof = 'mansard', roofMat = slate, roofH = 3.4, door = true, doorW = 2.2, pil = true, winRows = 1}){
+  function hall({x, z, w, d, h, rot = 0, wall = plaster, roof = 'mansard', roofMat = slate, roofH = 3.4, door = true, doorW = 2.2, doorStyle = 'saray', pil = true, winRows = 1}){
     const G = new THREE.Group(); G.position.set(x, 0, z); G.rotation.y = rot; root.add(G);
     add(new THREE.BoxGeometry(w + 0.4, 0.6, d + 0.4), stone, 0, 0.3, 0, G);
     add(new THREE.BoxGeometry(w, h, d), wall, 0, h / 2, 0, G);
@@ -147,11 +149,7 @@ export function buildCourt(world, C, hooks){
       }
     });
     if (door){
-      add(new THREE.BoxGeometry(doorW, 3.0, 0.12), M.doorMat, 0, 1.5 + 0.3, d / 2 + 0.06, G);
-      const ar = add(new THREE.TorusGeometry(doorW / 2, 0.1, 8, 24, Math.PI), gold, 0, 3.3, d / 2 + 0.1, G);
-      ar.scale.y = 0.6;
-      [-1, 1].forEach(s => add(new THREE.SphereGeometry(0.06, 8, 6), gold, s * 0.18, 1.8, d / 2 + 0.14, G));
-      [-1, 1].forEach(s => { const lp = add(new THREE.SphereGeometry(0.16, 10, 8), lampMat, s * (doorW / 2 + 0.6), 2.6, d / 2 + 0.3, G, false); lp.userData.lamp = true; });
+      doorway(world, G, {z:d / 2, w:doorW, h:3.0, y0:0.3, style:doorStyle, pediment:h >= 7});
     }
     C.box(x, z, w / 2 + 0.2, d / 2 + 0.2, rot);
     const front = toWorld(G, 0, d / 2 + 1.6);
@@ -674,7 +672,7 @@ export function buildCourt(world, C, hooks){
         ]);
       }
     });
-    interact.push({x:front[0], z:front[1] + 4.6, r:3.0, label:'Operaya bak', show:() => true, act:() => say('', 'Kapı görevlisi gülümsedi: "Perde birazdan açılacak. Maestro Valentin sağ tarafta bekliyor."')});
+    doors.opera = {x:front[0], z:front[1] + 4.6, ry:0};
   }
   function playAria(){
     const A = hooks.audio; if (!A || !A.ctx) return;
@@ -691,6 +689,7 @@ export function buildCourt(world, C, hooks){
   {
     const P = LIB;
     const {G, front} = hall({x:P.x, z:P.z, w:24, d:28, h:11, rot:0, wall:plaster, roof:'mansard', roofH:4.2, winRows:2, doorW:2.4});
+    doors.kutuphane = {x:front[0] - 1, z:front[1] - 0.2, ry:0};
     for (let i = 0; i < 5; i++){ const dx = -8 + i * 4; const dmr = add(new THREE.BoxGeometry(1.4, 1.6, 1.2), slate, dx, 12.4, 12.4, G); add(new THREE.PlaneGeometry(0.8, 1.0), winMat, dx, 12.4, 13.02, G, false); }
     // saat kulesi
     add(new THREE.BoxGeometry(4, 4, 4), cream, 0, 17.4, 0, G); add(new THREE.ConeGeometry(3.2, 4, 4), slate, 0, 21.4, 0, G).rotation.y = Math.PI / 4;
@@ -745,10 +744,12 @@ export function buildCourt(world, C, hooks){
     add(new THREE.CylinderGeometry(0.12, 0.12, 0.9, 10), brass, 0.5, 0.6, 0, tel).rotation.z = 0.5;
     add(new THREE.SphereGeometry(0.4, 14, 10), gold, 0, R + 0.1, 0, obsDome);
     // harita odası (sekizgen ek bina)
-    const mapRoom = add(new THREE.CylinderGeometry(4.2, 4.2, 5.5, 8), cream, 0, 2.75, R + 4.6, G);
-    add(new THREE.ConeGeometry(4.8, 2.2, 8), slate, 0, 6.6, R + 4.6, G);
+    // sekizgenin bir yüzü kapıya (güneye) baksın
+    const mapRoom = add(new THREE.CylinderGeometry(4.2, 4.2, 5.5, 8), cream, 0, 2.75, R + 4.6, G); mapRoom.rotation.y = Math.PI / 8;
+    add(new THREE.ConeGeometry(4.8, 2.2, 8), slate, 0, 6.6, R + 4.6, G).rotation.y = Math.PI / 8;
     for (let i = 0; i < 5; i++){ const a = (i - 2) * 0.62; const w = add(new THREE.PlaneGeometry(1.0, 2.2), winMat, Math.sin(a) * 4.0, 2.8, R + 4.6 + Math.cos(a) * 4.0, G, false); w.rotation.y = a; }
-    add(new THREE.BoxGeometry(1.8, 2.8, 0.15), M.doorMat, 0, 1.4, R + 8.7, G);
+    doorway(world, G, {z:R + 4.6 + 4.2 * Math.cos(Math.PI / 8), w:1.8, h:2.7, y0:0.05, style:'kemer', steps:0});
+    doors.rasathane = {x:P.x, z:P.z + R + 4.6 + 4.2 * Math.cos(Math.PI / 8) + 1.6, ry:0};
     C.circle(P.x, P.z, R + 1.0); C.circle(P.x, P.z + R + 4.6, 4.4);
     // dışarıda dönen armiller küre (orrery)
     const OX = P.x + 9, OZ = P.z + 10;
@@ -780,11 +781,12 @@ export function buildCourt(world, C, hooks){
     const P = FALCON;
     plane(44, 36, grassMat, P.x, 0.008, P.z);
     // yarı ahşap kuş evi (mews)
-    const {G} = hall({x:P.x, z:P.z - 8, w:20, d:9, h:5, rot:0, wall:plaster, roof:'gable', roofMat:tiles, roofH:3.6, pil:false, doorW:2});
+    const {G, front} = hall({x:P.x, z:P.z - 8, w:20, d:9, h:5, rot:0, wall:plaster, roof:'gable', roofMat:tiles, roofH:3.6, pil:false, doorW:2, doorStyle:'rustik'});
     for (let i = 0; i <= 8; i++) add(new THREE.BoxGeometry(0.22, 5, 0.1), darkWood, -10 + i * 2.5, 2.8, 4.56, G);
     add(new THREE.BoxGeometry(20, 0.22, 0.1), darkWood, 0, 3.2, 4.56, G); add(new THREE.BoxGeometry(20, 0.22, 0.1), darkWood, 0, 5.2, 4.56, G);
     for (let i = 0; i < 8; i++){ const b = add(new THREE.BoxGeometry(0.1, 2.0, 0.1), darkWood, -9 + i * 2.57, 1.9, 4.6, G); b.rotation.z = (i % 2 ? 1 : -1) * 0.75; }
     signBoard('Fauconnerie Royale', 0, 6.2, 4.7, 0, 4.4, G);
+    doors.sahin = {x:front[0], z:front[1], ry:0};
     // tüneklerde kuşlar
     const brown = new THREE.MeshStandardMaterial({color:0x6a4a2e, roughness:0.7}), chest = new THREE.MeshStandardMaterial({color:0xe2d4b8, roughness:0.7}), beakM = new THREE.MeshStandardMaterial({color:0xe8c040, roughness:0.4}), hood = new THREE.MeshStandardMaterial({color:0x8a2a1a, roughness:0.5});
     function bird(hooded){
@@ -842,7 +844,8 @@ export function buildCourt(world, C, hooks){
     add(new THREE.ConeGeometry(0.2, 1.4, 8), gold, 0, 14.8, 0, B); add(new THREE.TorusGeometry(0.4, 0.06, 6, 16, Math.PI * 1.6), gold, 0, 15.5, 0, B).rotation.z = 1.9;
     [[-6, 4.5], [6, 4.5], [-6, -4.5], [6, -4.5]].forEach(([x, z]) => { const d = add(new THREE.SphereGeometry(2, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xb8b8bc, {roughness:0.45, metalness:0.4}), x, 7.5, z, B); });
     for (let i = 0; i < 5; i++){ const x = -6 + i * 3; if (i === 2) continue; const w = add(new THREE.PlaneGeometry(1.2, 2.6), winMat, x, 3.4, 7.02, B, false); add(new THREE.TorusGeometry(0.6, 0.08, 6, 16, Math.PI), cream, x, 4.7, 7.05, B); }
-    add(new THREE.BoxGeometry(2.4, 3.8, 0.15), M.doorMat, 0, 1.9, 7.05, B); add(new THREE.TorusGeometry(1.2, 0.14, 8, 20, Math.PI), gold, 0, 3.8, 7.1, B);
+    doorway(world, B, {z:7.0, w:2.4, h:3.6, y0:0.15, style:'kemer', steps:1});
+    doors.hamam = {x:P.x, z:P.z - 9 + 7 + 1.8, ry:0};
     C.box(P.x, P.z - 9, 9.2, 7.2);
     signBoard('Thermes de Lumière', 0, 6.0, 7.1, 0, 5, B);
     // açık hava kaplıcası: mozaik zemin, sütunlu galeri, sıcak su havuzu
@@ -908,8 +911,10 @@ export function buildCourt(world, C, hooks){
     C.box(KX, KZ, 0.2, 1.2); arch.board = {x:KX - 0.14, y:1.3, z:KZ};
     signPost('Tir à l\'arc', P.x - LEN / 2 - 5, P.z - 9, Math.PI / 2);
     const basile = npc({coat:0x2a5a2a});
-    placeNPC(basile, P.x - LEN / 2 + 1.5, P.z - 7.6, Math.PI / 2, 'Okçu Basile', () => say('Okçu Basile', arch.best ? 'En iyi turun ' + arch.best + ' puan! Kontesin okçuları bile kıskanır.' : 'Beş ok, tek tur. Sarı merkez on puan. Pavyondan atış çizgisine geç ve E ile ok at. Bıçak tahtası da yanda, on adım ötede.'));
-    interact.push({x:P.x - LEN / 2 + 1.6, z:P.z, r:4.5, label:'Ok at', show:() => !arch.flying.length, act:() => shoot('ok')});
+    placeNPC(basile, P.x - LEN / 2 + 1.5, P.z - 7.6, Math.PI / 2, 'Okçu Basile', () => say('Okçu Basile', arch.best ? 'En iyi turun ' + arch.best + ' puan! Kontesin okçuları bile kıskanır.' : 'Beş ok, tek tur. Sarı merkez on puan. Atış çizgisinde E ile yayı al; fareyi basılı tuttukça yay gerilir, bırakınca ok uçar. Çok uzun gergin tutarsan kolun titrer! Rüzgârı da hesaba kat. Yayı bir kez aldın mı, B ile her yerde atabilirsin.'));
+    // birinci şahıs okçuluk (game/archery.js); kanca yoksa eski otomatik atış
+    arch.line = {x:P.x - LEN / 2 + 1.6, z:P.z};
+    interact.push({x:P.x - LEN / 2 + 1.6, z:P.z, r:4.5, label:'Yayı al (birinci şahıs okçuluk)', show:() => !arch.flying.length, act:() => hooks.archery ? hooks.archery({targets:arch.targets.map(t => ({x:t.x, y:t.y, z:t.z, nx:-1, ny:0, nz:0, r:0.85})), at:arch.line, yaw:Math.PI / 2}) : shoot('ok')});
     interact.push({x:KX - 6, z:KZ, r:2.6, label:'Bıçak at', show:() => !arch.flying.length, act:() => shoot('bicak')});
     plane(3.6, 18, gravel, P.x - LEN / 2 - 5, 0.08, P.z - 16);
   }
@@ -945,9 +950,10 @@ export function buildCourt(world, C, hooks){
   {
     const P = KITCHEN;
     plane(30, 26, grassMat, P.x, 0.008, P.z);
-    const {G} = hall({x:P.x, z:P.z - 2, w:20, d:12, h:6.5, rot:0, wall:brick, roof:'gable', roofMat:slate, roofH:4, doorW:2.2});
+    const {G, front} = hall({x:P.x, z:P.z - 2, w:20, d:12, h:6.5, rot:0, wall:brick, roof:'gable', roofMat:slate, roofH:4, doorW:2.2, doorStyle:'rustik'});
     [-6.5, 6.5].forEach(x => { add(new THREE.BoxGeometry(1.4, 6, 1.4), brick, x, 9.5, -2, G); add(new THREE.BoxGeometry(1.7, 0.4, 1.7), stone, x, 12.6, -2, G); smokeAt(P.x + x, 12.9, P.z - 4); });
     signBoard('Cuisines Royales', 0, 5.6, 6.1, 0, 4.6, G);
+    doors.mutfak = {x:front[0], z:front[1], ry:0};
     // dış ekmek fırını
     const OX = P.x - 8, OZ = P.z + 9;
     const ov = add(new THREE.SphereGeometry(1.6, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), brick, OX, 0.9, OZ); add(new THREE.CylinderGeometry(1.8, 1.9, 0.9, 20), stone, OX, 0.45, OZ);
@@ -984,8 +990,9 @@ export function buildCourt(world, C, hooks){
   {
     const P = PERFUME;
     plane(24, 26, grassMat, P.x, 0.008, P.z);
-    const {G} = hall({x:P.x, z:P.z - 4, w:12, d:9, h:5.5, rot:0, wall:new THREE.MeshStandardMaterial({color:0xf2dfe4, roughness:0.7}), roof:'mansard', roofMat:copper, roofH:2.6, doorW:2});
+    const {G, front} = hall({x:P.x, z:P.z - 4, w:12, d:9, h:5.5, rot:0, wall:new THREE.MeshStandardMaterial({color:0xf2dfe4, roughness:0.7}), roof:'mansard', roofMat:copper, roofH:2.6, doorW:2});
     signBoard('Parfumerie', 0, 4.8, 4.62, 0, 3.4, G);
+    doors.parfum = {x:front[0], z:front[1], ry:0};
     // önde cam veranda ve damıtma imbiği
     const V = new THREE.Group(); V.position.set(P.x, 0, P.z + 3); root.add(V);
     add(new THREE.BoxGeometry(8, 0.3, 4), marble, 0, 0.15, 0, V);
@@ -1035,8 +1042,9 @@ export function buildCourt(world, C, hooks){
   {
     const P = SILK;
     plane(34, 30, grassMat, P.x, 0.008, P.z);
-    const {G} = hall({x:P.x, z:P.z - 4, w:22, d:10, h:6, rot:0, wall:new THREE.MeshStandardMaterial({color:0xe9dcc4, roughness:0.8}), roof:'mansard', roofMat:slate, roofH:3, doorW:2.2, winRows:1});
+    const {G, front} = hall({x:P.x, z:P.z - 4, w:22, d:10, h:6, rot:0, wall:new THREE.MeshStandardMaterial({color:0xe9dcc4, roughness:0.8}), roof:'mansard', roofMat:slate, roofH:3, doorW:2.2, winRows:1});
     signBoard('Soieries de Lumière', 0, 5.3, 5.12, 0, 4.4, G);
+    doors.ipek = {x:front[0], z:front[1], ry:0};
     // dut ağaçları (ipek böcekleri için)
     for (let i = 0; i < 6; i++){ const x = P.x - 14 + (i % 3) * 4, z = P.z + 6 + Math.floor(i / 3) * 4; tree(x, z, 0.8, 0.26); }
     // kurutma iplerinde renkli ipekler
@@ -1076,7 +1084,8 @@ export function buildCourt(world, C, hooks){
   {
     const P = WINERY;
     plane(32, 30, grassMat, P.x, 0.008, P.z);
-    const {G} = hall({x:P.x, z:P.z, w:20, d:14, h:7, rot:-Math.PI / 2, wall:new THREE.MeshStandardMaterial({map:M.stoneMat.map, color:0xd8c8a8, roughness:0.9}), roof:'gable', roofMat:tiles, roofH:4.2, pil:false, doorW:2.6});
+    const {G, front} = hall({x:P.x, z:P.z, w:20, d:14, h:7, rot:-Math.PI / 2, wall:new THREE.MeshStandardMaterial({map:M.stoneMat.map, color:0xd8c8a8, roughness:0.9}), roof:'gable', roofMat:tiles, roofH:4.2, pil:false, doorStyle:'kemer', doorW:2.6});
+    doors.sarap = {x:front[0], z:front[1], ry:-Math.PI / 2};
     // kemerli mahzen girişi ve inen basamaklar
     const [ex, ez] = toWorld(G, 6, 7.0);
     const cellar = new THREE.Group(); cellar.position.set(ex, 0, ez); cellar.rotation.y = -Math.PI / 2; root.add(cellar);
@@ -1332,5 +1341,5 @@ export function buildCourt(world, C, hooks){
   const fix = m => { if (!m || shared.has(m) || done.has(m) || m.isMeshBasicMaterial || m.isPointsMaterial) return; done.add(m); if (m.color) m.color.convertSRGBToLinear(); };
   root.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(fix); });
   if (rider) rider.obj.traverse(o => { if (o.material) fix(o.material); });
-  return {root, interact, markers, update, places:PLACES};
+  return {root, interact, markers, update, places:PLACES, doors, archeryTargets:() => arch.targets.map(t => ({x:t.x, y:t.y, z:t.z, nx:-1, ny:0, nz:0, r:0.85}))};
 }

@@ -1,6 +1,7 @@
 // Yapı kiti: bina, sütun, köşk, tabela, figür ve heykel yapıcıları; sabit parçaları birleştiren "pişirme" adımı.
 // royal.js gibi bölge modülleri kendi kök grupları için bir kit örneği alır.
 import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { doorway } from './doors.js';
 
 export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [], say = () => {}} = {}){
   const { THREE, materials:M } = world;
@@ -65,7 +66,7 @@ export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [],
     });
   }
   /** Dikdörtgen bina: kapı yerel +z yüzünde. */
-  function hall({x, z, w, d, h, rot = 0, wall = plaster, roof = 'mansard', roofMat = slate, roofH = 3.4, door = true, doorW = 2.2, winRows = 1, collide = true}){
+  function hall({x, z, w, d, h, rot = 0, wall = plaster, roof = 'mansard', roofMat = slate, roofH = 3.4, door = true, doorW = 2.2, doorStyle = 'saray', winRows = 1, collide = true}){
     const G = new THREE.Group(); G.position.set(x, 0, z); G.rotation.y = rot; root.add(G);
     add(new THREE.BoxGeometry(w + 0.4, 0.6, d + 0.4), stone, 0, 0.3, 0, G);
     add(new THREE.BoxGeometry(w, h, d), wall, 0, h / 2, 0, G);
@@ -75,9 +76,7 @@ export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [],
     else if (roof === 'flat') add(new THREE.BoxGeometry(w + 0.2, 0.3, d + 0.2), cream, 0, h + 0.55, 0, G);
     windows(G, w, d, h, winRows, door ? doorW : 0);
     if (door){
-      add(new THREE.BoxGeometry(doorW, 3.0, 0.12), M.doorMat, 0, 1.8, d / 2 + 0.06, G);
-      add(new THREE.TorusGeometry(doorW / 2, 0.1, 8, 24, Math.PI), gold, 0, 3.3, d / 2 + 0.1, G).scale.y = 0.6;
-      [-1, 1].forEach(s => add(new THREE.SphereGeometry(0.16, 10, 8), lampMat, s * (doorW / 2 + 0.6), 2.6, d / 2 + 0.3, G, false));
+      doorway(world, G, {z:d / 2, w:doorW, h:3.0, y0:0.3, style:doorStyle, pediment:h >= 7});
     }
     if (collide) C.box(x, z, w / 2 + 0.2, d / 2 + 0.2, rot);
     return {G, front:toWorld(G, 0, d / 2 + 1.6)};
@@ -188,5 +187,5 @@ export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [],
   }
 
   return {THREE, M, rnd, L, m4, q4, s4, add, canvas, ctex, plane, disc, toWorld, lathe, mat, gold, stone, marble, gravel, slate, cream, plaster, wood, darkWood, winMat, lampMat, grass,
-    signBoard, signPost, column, frustum, gableGeo, windows, hall, npc, lady, mask, placeNPC, statue, statueGeos, bake, fixColors, interact, updaters};
+    doorway:(parent, o) => doorway(world, parent, o), signBoard, signPost, column, frustum, gableGeo, windows, hall, npc, lady, mask, placeNPC, statue, statueGeos, bake, fixColors, interact, updaters};
 }
