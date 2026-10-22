@@ -8,22 +8,22 @@ function hideHalberd(g){ g.userData.armR.children.forEach(c => { if (c.isGroup) 
 
 export function makeHero(world){
   const { THREE, materials:M } = world;
-  const g = world.makeGuard();
+  const g = world.makeGuard({hair:0x2a1a10});
   hideHalberd(g);
-  const coat = new THREE.MeshStandardMaterial({color:0x1f4a3c, roughness:0.75, envMapIntensity:0.5});
-  const hat = new THREE.MeshStandardMaterial({color:0x4a3222, roughness:0.75});
-  const trousers = new THREE.MeshStandardMaterial({color:0x6b5a44, roughness:0.8});
+  const coat = new THREE.MeshStandardMaterial({color:0x0c2a1f, roughness:0.7, envMapIntensity:0.5});
+  const hat = new THREE.MeshStandardMaterial({color:0x1e140c, roughness:0.75});
+  const trousers = new THREE.MeshStandardMaterial({color:0x8a7656, roughness:0.8});
   recolor(g, M.coatMat, coat); recolor(g, M.hatMat, hat); recolor(g, M.whiteMat, trousers);
   // pelerin
   const capeMat = new THREE.MeshStandardMaterial({color:0x4e0f1c, roughness:0.95, side:THREE.DoubleSide, envMapIntensity:0.35});
   const cape = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.95, 1, 4), capeMat);
-  cape.geometry.translate(0, -0.47, 0); cape.position.set(0, 1.62, -0.16); cape.castShadow = true; g.add(cape);
+  cape.geometry.translate(0, -0.47, 0); cape.position.set(0, 1.6, -0.19); cape.castShadow = true; g.add(cape);
   // çanta ve kemer tokası
   world.part(new THREE.BoxGeometry(0.18, 0.2, 0.1), hat, 0.27, 0.95, 0.05, g);
   world.part(new THREE.BoxGeometry(0.08, 0.08, 0.02), M.goldMat, 0, 1.0, 0.16, g);
   // tüy
-  const plume = world.part(new THREE.ConeGeometry(0.05, 0.4, 6), new THREE.MeshStandardMaterial({color:0xf2efe6, roughness:0.6}), 0.18, 2.08, -0.02, g);
-  plume.rotation.z = -0.9;
+  const plume = world.part(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshStandardMaterial({color:0xf2efe6, roughness:0.8}), 0.14, 2.02, -0.06, g);
+  plume.scale.set(0.5, 3.4, 1.1); plume.rotation.set(-0.5, 0, -1.0);
   // gece feneri
   const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({color:0xffc070, toneMapped:false}));
   lantern.position.set(0, -0.68, 0.08); g.userData.armL.add(lantern);
@@ -138,7 +138,7 @@ export class Hero {
       C.resolve(p, this.mounted ? 0.85 : R, this.pos.y);
       // basamak kuralı: 0.6 m'den yüksek bir basamağa/çıkıntıya yürüyerek çıkılmaz
       if (C.ledge(p.x, p.z, this.pos.y)){ p.x = prev.x; p.z = prev.z; }
-      if (this.zone !== 'ic' && this.zone !== 'gecit'){ const lim = 280, rr = Math.hypot(p.x, p.z - 10); if (rr > lim){ p.x *= lim / rr; p.z = 10 + (p.z - 10) * lim / rr; } }
+      if (this.zone !== 'ic' && this.zone !== 'gecit'){ const lim = 280, zz = (p.z - 10) * (C.shoreLimit && p.z > 10 ? 0.8 : 1), rr = Math.hypot(p.x, zz); if (rr > lim){ p.x *= lim / rr; p.z = 10 + (p.z - 10) * lim / rr; } if (C.shoreLimit) C.shoreLimit(p); }
     }
     this.pos.x = p.x; this.pos.z = p.z;
     const realSpeed = Math.hypot(this.pos.x - prev.x, this.pos.z - prev.z) / Math.max(dt, 1e-4);
@@ -179,7 +179,7 @@ export class Hero {
       const prevStep = this.stepT; this.stepT = Math.sin(this.phase);
       if (s > 0.6 && Math.sign(prevStep) !== Math.sign(this.stepT)) mods.sfx('step', this.pos);
     }
-    u.cape.rotation.x = 0.1 + Math.min(0.9, realSpeed * 0.09) + Math.sin(t * 6) * 0.04 * (0.3 + this.w.state.wind);
+    u.cape.rotation.x = 0.24 + Math.min(0.9, realSpeed * 0.09) + Math.sin(t * 6) * 0.04 * (0.3 + this.w.state.wind);
     const lamp = W.night > 0.5 ? 1 : 0; u.lantern.visible = !!lamp; u.lanternLight.intensity = lamp * 2.2;
 
     // birinci şahıs: binicinin / karakterin gözünden

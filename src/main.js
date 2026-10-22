@@ -6,6 +6,7 @@ import { buildSanctuary } from './sanctuary.js';
 import { buildCourt } from './court.js';
 import { buildRoyal } from './royal.js';
 import { createDragonRide } from './dragonride.js';
+import { buildSea } from './sea.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -31,6 +32,7 @@ const interior = buildInterior(world, {
   cook:() => talkCook(), showKitchen:() => S.notes.cookQuest && !S.notes.coinMap && (S.notes.oranges || []).length >= 3,
 });
 hero.Cin = interior.C;
+const sea = buildSea(world, C);
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
 const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
@@ -500,6 +502,7 @@ function frame(){
   sanctuary.update(dt, t, hero);
   court.update(dt, t, hero);
   royal.update(dt, t, hero);
+  sea.update(dt, t, hero, indoor);
   estate.indoor = indoor;
   estate.update(dt, t, hero);
   interior.update(dt, t, hero, S, id => {
@@ -509,7 +512,7 @@ function frame(){
   });
   if (indoor){ applyIndoorLight(); winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } }
   if (audio.started){
-    audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:Math.hypot(hero.pos.x, hero.pos.z - 10), indoorsHigh:hero.zone === 'kule', indoor});
+    audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), sea.dist(hero.pos.x, hero.pos.z) * 0.45), indoorsHigh:hero.zone === 'kule', indoor});
   }
   input.endFrame();
   composer.render();
@@ -525,4 +528,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, whistleHorse, pickInteract };

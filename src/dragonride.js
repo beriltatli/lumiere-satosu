@@ -74,6 +74,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
       // oyuncu ejderhanın altındaki zemine iner
       const p = {x:st.pos.x, z:st.pos.z};
       C.resolve(p, 0.6, 0);
+      if (C.shoreLimit) C.shoreLimit(p);   // deniz üstünde inilirse kıyıya
       scene.add(hero.obj); hero.obj.visible = true; const u = hero.obj.userData;
       u.legL.rotation.set(0, 0, 0); u.legR.rotation.set(0, 0, 0); u.armL.rotation.x = 0; u.armR.rotation.x = 0;
       hero.zone = null; hero.teleport(p.x, C.height(p.x, p.z), p.z, st.yaw); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
