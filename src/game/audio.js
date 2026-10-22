@@ -103,6 +103,12 @@ export class Audio {
       }
       case 'whistle': this.tone(1900, 0.18, 'sine', 0.1); this.tone(2500, 0.32, 'sine', 0.1, 0.2); break;
       case 'whoosh': this.burst(600, 0.5, 0.6, 0.15, 'bandpass'); break;
+      // Yùlóng Adası: gong, tapınak çanı, davul, rüzgâr çanı, bambu tıkırtısı
+      case 'gong': [[98, 2.4, 0.16], [151, 2.0, 0.08], [233, 1.6, 0.05], [367, 1.2, 0.03]].forEach(([f, d, v]) => this.tone(f, d * 1.6, 'sine', v)); this.burst(300, 0.8, 0.5, 0.1, 'lowpass'); break;
+      case 'bell': [[62, 5, 0.18], [124.6, 4, 0.08], [171, 3.5, 0.05], [262, 2.6, 0.035], [418, 1.8, 0.02]].forEach(([f, d, v]) => this.tone(f, d, 'sine', v)); this.burst(180, 1, 0.3, 0.12, 'lowpass'); break;
+      case 'drum': this.tone(70, 0.22, 'triangle', 0.22); this.tone(52, 0.3, 'sine', 0.2); this.burst(220, 1, 0.12, 0.12, 'lowpass'); break;
+      case 'chime': [1568, 2093, 2349, 2637, 3136].forEach((f, i) => this.tone(f * (1 + (Math.random() - 0.5) * 0.01), 1.2, 'sine', 0.035, i * 0.09 + Math.random() * 0.05)); break;
+      case 'wood': this.tone(420 + Math.random() * 260, 0.05, 'triangle', 0.05); this.burst(1200, 3, 0.04, 0.05); break;
     }
   }
   /** Klavsen benzeri kısa nota (müzik veriyolunda). */
@@ -122,13 +128,16 @@ export class Audio {
     // akor dizisi (Re majör / Si minör)
     const MAJ = [[62, 66, 69], [67, 71, 74], [69, 73, 76], [62, 66, 69], [71, 74, 78], [67, 71, 74], [64, 67, 71], [69, 73, 76]];
     const MIN = [[59, 62, 66], [55, 59, 62], [54, 57, 61], [59, 62, 66], [52, 55, 59], [55, 59, 62], [54, 58, 61], [59, 62, 66]];
-    const prog = minor ? MIN : MAJ;
+    // Yùlóng Adası'nda pentatonik (Re-Mi-Fa#-La-Si), guzheng benzeri seyrek tellemeler
+    const PENT = [[62, 64, 69], [57, 62, 66], [59, 64, 66], [62, 66, 69], [64, 69, 71], [57, 64, 66], [59, 62, 66], [62, 64, 69]];
+    const cin = this.style === 'cin';
+    const prog = cin ? PENT : minor ? MIN : MAJ;
     const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
     while (this.nextNote < c.currentTime + 0.25){
       const chord = prog[this.bar % prog.length], st = this.step % 16;
       const pat = [0, 1, 2, 1, 0, 1, 2, 3, 0, 1, 2, 1, 2, 1, 0, 3];
       const idx = pat[st], note = idx === 3 ? chord[0] + 12 : chord[idx];
-      if (!minor || st % 2 === 0) this.pluck(mtof(note + 12), this.nextNote, 0.06, minor ? 1.2 : 0.7);
+      if (cin ? (st % 4 !== 3 || this.bar % 2) : (!minor || st % 2 === 0)) this.pluck(mtof(note + 12), this.nextNote, cin ? 0.05 : 0.06, cin ? 1.5 : minor ? 1.2 : 0.7);
       if (st === 0 || st === 8) this.pluck(mtof(chord[0] - 12), this.nextNote, 0.09, 1.6);
       if (st === 0 && this.bar % 2 === 0) this.pluck(mtof(chord[2] + 24), this.nextNote + s16 * 2, 0.035, 1.4);
       this.nextNote += s16; this.step++; if (this.step % 16 === 0) this.bar++;
