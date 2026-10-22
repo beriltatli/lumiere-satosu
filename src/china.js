@@ -11,6 +11,7 @@
 import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { makeCoast, buildIslandTerrain } from './coast.js';
 import { makeKit } from './kit.js';
+import { buildLongDragon } from './longdragon.js';
 
 export const CHINA = {x:520, z:1080, name:'Yùlóng Adası', sub:'Çin İmparatorluk Adası'};
 export const CHINA_COAST = makeCoast({cx:CHINA.x, cz:CHINA.z, radius:290, waves:[[3, 22, 1.9], [4, 10, 0.3], [7, 6, 2.5]], ripple:[[9, 4, 0.7], [23, 1.6, 2]], fn:'coastYL'});
@@ -120,6 +121,7 @@ export function buildChina(world, C, hooks){
     return S.china || (S.china = {found:[], goods:{porselen:[], ipek:[], hali:[], yesim:[], cay:[]}, french:{sarap:0, parfum:0}, prestige:0, culture:0, trades:0, cargo:0, rank:0, met:false, seal:false});
   };
   const ui = hooks.ui, sfx = n => hooks.sfx(n);
+  const linMats = new Set();
   const trees = {pine:[], bloom:[], willow:[]};
   const flutter = [];        // rüzgârda dalgalanan kumaşlar ve bayraklar
 
@@ -303,9 +305,17 @@ export function buildChina(world, C, hooks){
 
   /* ================= insanlar ================= */
   const skins = [0xe9c6a2, 0xdcb48e, 0xf0d2b2]; let figN = 0;
+  const basketMat = (() => { const [c, g] = canvas(64, 64); g.fillStyle = '#b39554'; g.fillRect(0, 0, 64, 64); g.strokeStyle = '#7a6030'; g.lineWidth = 2; for (let i = 0; i < 64; i += 8){ g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 8, 64); g.stroke(); g.beginPath(); g.moveTo(i + 8, 0); g.lineTo(i, 64); g.stroke(); } return new THREE.MeshStandardMaterial({map:ctex(c, 4, 2), roughness:0.85, side:THREE.DoubleSide}); })();
+  const batikMat = (() => { const [c, g] = canvas(64, 64); g.fillStyle = '#1f3f7a'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#e8eef6'; for (let y = 8; y < 64; y += 16) for (let x = 8; x < 64; x += 16){ g.beginPath(); g.arc(x + (y / 16 % 2) * 8, y, 4, 0, Math.PI * 2); g.fill(); } return new THREE.MeshStandardMaterial({map:ctex(c, 2, 3), roughness:0.85}); })();
   const eyeM = new THREE.MeshBasicMaterial({color:0x1a120c});
-  function figure({robe = 0x2b4a7a, trim = 0xd4af37, hat = 'resmi', sash} = {}){
+  function figure({robe = 0x2b4a7a, trim = 0xd4af37, hat = 'resmi', sash, worker = false, basket = false, scarf = 0x2a4a8a} = {}){
     const g = new THREE.Group(), R = mat(robe, {roughness:0.55}), Tm = mat(trim, {roughness:0.45}), skin = mat(skins[figN++ % 3], {roughness:0.6}), hair = mat(0x15110e, {roughness:0.5});
+    if (worker){
+      // köylü giysisi: dizine inen yakası çapraz entari, bol pantolon, bez ayakkabı, mavi-beyaz önlük
+      add(lathe([[0, 0.7], [0.27, 0.7], [0.25, 0.85], [0.22, 1.15], [0.2, 1.38], [0.12, 1.5], [0, 1.5]], 18), R, 0, 0, 0, g);
+      [-1, 1].forEach(sd => { add(new THREE.CylinderGeometry(0.09, 0.11, 0.66, 10), mat(0x22324a, {roughness:0.8}), sd * 0.1, 0.38, 0, g); add(new THREE.BoxGeometry(0.11, 0.06, 0.22), black, sd * 0.1, 0.03, 0.03, g); });
+      add(new THREE.BoxGeometry(0.34, 0.5, 0.02), batikMat, 0, 0.9, 0.23, g).rotation.x = -0.08;
+    } else
     add(lathe([[0, 0.02], [0.34, 0.02], [0.3, 0.35], [0.25, 0.8], [0.22, 1.15], [0.2, 1.38], [0.12, 1.5], [0, 1.5]], 20), R, 0, 0, 0, g);
     add(new THREE.CylinderGeometry(0.232, 0.24, 0.12, 20), mat(sash ?? trim, {roughness:0.5}), 0, 0.98, 0, g);
     [-1, 1].forEach(sd => { const c = add(new THREE.BoxGeometry(0.05, 0.42, 0.02), Tm, sd * 0.05, 1.3, 0.19, g, false); c.rotation.z = sd * 0.45; });
@@ -319,7 +329,15 @@ export function buildChina(world, C, hooks){
     else if (hat === 'hasir') add(new THREE.ConeGeometry(0.4, 0.22, 18), bamboo, 0, 1.88, 0, g);
     else if (hat === 'hanim'){ add(new THREE.SphereGeometry(0.09, 12, 10), hair, 0, 1.86, -0.04, g).scale.set(1.6, 0.8, 1); const p = add(new THREE.CylinderGeometry(0.008, 0.008, 0.34, 6), gold, 0, 1.88, -0.03, g); p.rotation.z = Math.PI / 2; add(new THREE.SphereGeometry(0.035, 8, 6), mat(0xe0457a), 0.13, 1.87, 0.02, g); }
     else if (hat === 'bilgin') add(new THREE.BoxGeometry(0.2, 0.1, 0.2), black, 0, 1.83, -0.01, g);
+    else if (hat === 'mendil'){ add(new THREE.SphereGeometry(0.13, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), mat(scarf, {roughness:0.8}), 0, 1.72, -0.01, g).scale.set(1, 1.05, 1.05); add(new THREE.ConeGeometry(0.05, 0.16, 6), mat(scarf, {roughness:0.8}), 0, 1.66, -0.15, g).rotation.x = -2.3; }
     else if (hat === 'komutan'){ add(new THREE.ConeGeometry(0.15, 0.3, 12), mat(0x8a8f96, {metalness:0.8, roughness:0.3}), 0, 1.92, 0, g); add(new THREE.ConeGeometry(0.04, 0.22, 6), mat(0xb3121e), 0, 2.12, 0, g); }
+    if (basket){
+      // sırtta örme bambu sepet ve omuz askıları
+      add(lathe([[0, 0], [0.13, 0], [0.2, 0.2], [0.24, 0.48], [0.25, 0.52], [0, 0.52]], 14), basketMat, 0, 0.98, -0.32, g);
+      add(new THREE.TorusGeometry(0.245, 0.018, 6, 16), bamboo, 0, 1.5, -0.32, g).rotation.x = Math.PI / 2;
+      [-1, 1].forEach(sd => { const st = add(new THREE.BoxGeometry(0.03, 0.42, 0.02), mat(0x5a4028), sd * 0.1, 1.28, -0.02, g, false); st.rotation.x = 0.55; });
+      add(new THREE.SphereGeometry(0.2, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), mat(0x5f8f3a, {roughness:0.9}), 0, 1.48, -0.32, g).scale.y = 0.4;
+    }
     return g;
   }
   function person(lx, lz, ry, name, opts, fn, r = 2.6){
@@ -332,6 +350,127 @@ export function buildChina(world, C, hooks){
     });
     if (fn) act(lx, lz, 'Konuş: ' + name, fn, r);
     return g;
+  }
+
+  /* ================= Prenses Lìhuá: beyaz saray makyajı, yelpaze, saç süsleri ================= */
+  function makeLihua(){
+    const g = new THREE.Group(), V = (x, y) => new THREE.Vector2(x, y);
+    const cv = (w, h, fn, rx = 1, ry = 1) => { const [c, x] = canvas(w, h); fn(x, w, h); return ctex(c, rx, ry); };
+    const skin = mat(0xfbf5f0, {roughness:0.5}), hairM = mat(0x0c0a0b, {roughness:0.35, metalness:0.05, side:THREE.DoubleSide});
+    // etek: koyu kırmızı ipek, altın bulut (xiangyun) ve şakayık motifleri, etekte dalga bordürü
+    const skirtTex = cv(512, 512, (x, w, h) => {
+      x.fillStyle = '#8e1424'; x.fillRect(0, 0, w, h);
+      x.strokeStyle = '#e2b24a'; x.fillStyle = '#e2b24a'; x.lineWidth = 3;
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++){
+        const px = i * 128 + (j % 2) * 64 + 32, py = j * 100 + 50;
+        if ((i + j) % 2){ for (let k = 0; k < 3; k++){ x.beginPath(); x.arc(px + k * 14 - 14, py, 9 - k * 2, Math.PI, Math.PI * 2.6); x.stroke(); } }
+        else { x.fillStyle = '#e8829a'; for (let k = 0; k < 6; k++){ const a = k / 6 * Math.PI * 2; x.beginPath(); x.ellipse(px + Math.cos(a) * 10, py + Math.sin(a) * 10, 9, 6, a, 0, Math.PI * 2); x.fill(); } x.fillStyle = '#e2b24a'; x.beginPath(); x.arc(px, py, 5, 0, Math.PI * 2); x.fill(); }
+      }
+      x.fillStyle = '#1d3a6e'; x.fillRect(0, h - 70, w, 70); x.strokeStyle = '#e2b24a'; x.lineWidth = 4;
+      for (let i = 0; i < w; i += 32){ x.beginPath(); x.arc(i + 16, h - 20, 14, Math.PI, Math.PI * 2); x.stroke(); x.beginPath(); x.arc(i + 16, h - 20, 7, Math.PI, Math.PI * 2); x.stroke(); }
+      x.fillStyle = '#e2b24a'; x.fillRect(0, h - 74, w, 6);
+    }, 3, 1);
+    // ceket ve geniş kollar: fildişi ipek, pembe erik çiçekleri, altın kenar
+    const silkTex = cv(256, 256, (x, w, h) => {
+      x.fillStyle = '#f4e8dc'; x.fillRect(0, 0, w, h);
+      for (let k = 0; k < 14; k++){ const px = (k * 73) % w, py = (k * 131) % h; x.fillStyle = '#e88aa2'; for (let p = 0; p < 5; p++){ const a = p / 5 * Math.PI * 2; x.beginPath(); x.arc(px + Math.cos(a) * 6, py + Math.sin(a) * 6, 5, 0, Math.PI * 2); x.fill(); } x.fillStyle = '#d4a020'; x.beginPath(); x.arc(px, py, 2.5, 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = '#c8102e'; x.fillRect(0, h - 26, w, 26); x.fillStyle = '#e2b24a'; x.fillRect(0, h - 30, w, 4); x.fillRect(0, h - 8, w, 3);
+    }, 2, 1);
+    const skirtM = new THREE.MeshStandardMaterial({map:skirtTex, roughness:0.4, metalness:0.05, side:THREE.DoubleSide});
+    const silkM = new THREE.MeshStandardMaterial({map:silkTex, roughness:0.45, side:THREE.DoubleSide});
+    const sashM = mat(0xd4a020, {roughness:0.35, metalness:0.4});
+    // yüksek belli etek (ruqun)
+    add(new THREE.LatheGeometry([V(0, 0.02), V(0.52, 0.02), V(0.46, 0.3), V(0.34, 0.75), V(0.22, 1.12), V(0.17, 1.27), V(0, 1.28)], 36), skirtM, 0, 0, 0, g).scale.set(1, 1, 0.85);
+    // üst beden ve çapraz yaka
+    add(new THREE.LatheGeometry([V(0, 1.1), V(0.17, 1.12), V(0.16, 1.3), V(0.17, 1.42), V(0.09, 1.52), V(0.055, 1.55), V(0, 1.55)], 24), silkM, 0, 0, 0, g).scale.set(1, 1, 0.8);
+    // çapraz yaka: omuzlardan göğüste birleşen kırmızı şeritler
+    [-1, 1].forEach(sd => { const c = add(new THREE.BoxGeometry(0.035, 0.22, 0.015), mat(0xc8102e), sd * 0.045, 1.4, 0.128, g, false); c.rotation.z = -sd * 0.44; });
+    // geniş göğüs kuşağı ve önde sarkan kurdeleler
+    add(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 24), sashM, 0, 1.24, 0, g).scale.set(1, 1, 0.82);
+    [-0.035, 0.035].forEach(dx => { const r = add(new THREE.BoxGeometry(0.04, 0.75, 0.01), mat(0xc8102e, {side:THREE.DoubleSide}), dx, 0.84, 0.17, g, false); r.rotation.x = -0.12; });
+    add(new THREE.SphereGeometry(0.03, 10, 8), mat(0x2f9a6a, {roughness:0.15}), 0, 1.18, 0.165, g);   // yeşim kemer tokası
+    // boyun ve baş
+    add(new THREE.CylinderGeometry(0.04, 0.046, 0.08, 12), skin, 0, 1.57, 0, g);
+    const head = new THREE.Group(); head.position.set(0, 1.67, 0); g.add(head);
+    const faceTex = cv(1024, 512, (x, W2, H2) => {
+      const cx = 256, cy = 256;
+      x.fillStyle = '#fbf6f2'; x.fillRect(0, 0, W2, H2);           // beyaz pudra
+      const rg = (px, py, r, col) => { const g2 = x.createRadialGradient(px, py, 0, px, py, r); g2.addColorStop(0, col); g2.addColorStop(1, 'rgba(251,246,242,0)'); x.fillStyle = g2; x.fillRect(px - r, py - r, r * 2, r * 2); };
+      // gözlerin çevresinden şakaklara uzanan pembe-kırmızı allık (saray makyajı)
+      [-1, 1].forEach(sd => { rg(cx + sd * 62, cy - 4, 46, 'rgba(226,70,96,.55)'); rg(cx + sd * 70, cy + 30, 40, 'rgba(240,120,140,.35)'); });
+      // alında kırmızı-altın erik çiçeği (huadian)
+      x.fillStyle = '#d0102a'; for (let p = 0; p < 5; p++){ const a = p / 5 * Math.PI * 2 - Math.PI / 2; x.beginPath(); x.arc(cx + Math.cos(a) * 7, cy - 82 + Math.sin(a) * 7, 5.5, 0, Math.PI * 2); x.fill(); }
+      x.fillStyle = '#f0c040'; x.beginPath(); x.arc(cx, cy - 82, 3, 0, Math.PI * 2); x.fill();
+      [-1, 1].forEach(sd => {
+        const ex = cx + sd * 54, ey = cy - 14;
+        // badem göz, uçları şakağa doğru çekik
+        x.save(); x.beginPath(); x.moveTo(ex - sd * 24, ey + 2); x.bezierCurveTo(ex - sd * 10, ey - 11, ex + sd * 14, ey - 12, ex + sd * 28, ey - 7); x.bezierCurveTo(ex + sd * 12, ey + 8, ex - sd * 10, ey + 9, ex - sd * 24, ey + 2); x.closePath();
+        x.fillStyle = '#f6f2ee'; x.fill(); x.clip();
+        const ig = x.createRadialGradient(ex, ey - 1, 2, ex, ey - 1, 11); ig.addColorStop(0, '#5a3218'); ig.addColorStop(1, '#1e0f06');
+        x.fillStyle = ig; x.beginPath(); x.arc(ex, ey - 1, 10.5, 0, Math.PI * 2); x.fill();
+        x.fillStyle = '#0a0503'; x.beginPath(); x.arc(ex, ey - 1, 4.5, 0, Math.PI * 2); x.fill();
+        x.fillStyle = 'rgba(255,255,255,.9)'; x.beginPath(); x.arc(ex + 3, ey - 5, 2.6, 0, Math.PI * 2); x.fill();
+        x.restore();
+        // kalın siyah sürme, kuyruklu
+        x.strokeStyle = '#0a0606'; x.lineCap = 'round'; x.lineWidth = 4.5;
+        x.beginPath(); x.moveTo(ex - sd * 24, ey + 2); x.bezierCurveTo(ex - sd * 10, ey - 11, ex + sd * 14, ey - 12, ex + sd * 34, ey - 12); x.stroke();
+        // ince uzun söğüt yaprağı kaşlar
+        x.strokeStyle = '#151012'; x.lineWidth = 3.2; x.beginPath(); x.moveTo(cx + sd * 22, cy - 38); x.quadraticCurveTo(cx + sd * 56, cy - 56, cx + sd * 96, cy - 44); x.stroke();
+      });
+      // burun: belli belirsiz
+      x.fillStyle = 'rgba(200,160,160,.25)'; [-1, 1].forEach(sd => { x.beginPath(); x.ellipse(cx + sd * 5, cy + 36, 2.8, 1.6, 0, 0, Math.PI * 2); x.fill(); });
+      // kiraz dudak: dudağın yalnız ortası kırmızıya boyanır
+      const ly = cy + 72;
+      x.fillStyle = '#c40a1e'; x.beginPath(); x.moveTo(cx - 13, ly); x.quadraticCurveTo(cx - 7, ly - 8, cx, ly - 4); x.quadraticCurveTo(cx + 7, ly - 8, cx + 13, ly); x.quadraticCurveTo(cx, ly + 11, cx - 13, ly); x.fill();
+      x.strokeStyle = 'rgba(90,0,10,.7)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(cx - 12, ly + 0.5); x.quadraticCurveTo(cx, ly + 2.5, cx + 12, ly + 0.5); x.stroke();
+      rg(cx + 2, ly + 5, 4, 'rgba(255,210,210,.6)');
+    });
+    const hg = new THREE.SphereGeometry(0.106, 48, 32);
+    { const p = hg.attributes.position; for (let i = 0; i < p.count; i++){ const ny = p.getY(i) / 0.106; if (ny < 0){ const k = 1 - 0.26 * Math.pow(-ny, 1.7); p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * (1 - 0.06 * ny * ny) + 0.005 * ny * ny); } } hg.computeVertexNormals(); }
+    const face = add(hg, new THREE.MeshStandardMaterial({map:faceTex, roughness:0.5}), 0, 0, 0, head); face.scale.set(0.88, 1.1, 0.96);
+    add(new THREE.SphereGeometry(0.0075, 10, 8), skin, 0, -0.02, 0.094, head).scale.set(0.8, 1.1, 0.6);
+    // saç: ortadan ayrılmış, şakaklarda kabarık, tepede iki halka topuz ve arkada uzun örgü
+    add(new THREE.SphereGeometry(0.113, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.36), hairM, 0, 0.008, -0.004, head).scale.set(0.95, 1.1, 1.0);
+    add(new THREE.SphereGeometry(0.116, 28, 16, Math.PI, Math.PI, 0, Math.PI * 0.72), hairM, 0, 0, -0.01, head).scale.set(0.98, 1.08, 1.04);
+    [-1, 1].forEach(sd => {
+      add(new THREE.SphereGeometry(0.05, 14, 10), hairM, sd * 0.088, 0.03, -0.015, head).scale.set(0.8, 1.3, 1.1);
+      const loop = add(new THREE.TorusGeometry(0.042, 0.02, 10, 22), hairM, sd * 0.065, 0.17, -0.03, head); loop.rotation.set(0, Math.PI / 2, sd * 0.6);
+      // altın saç iğneleri ve sallanan boncuk dizileri (buyao)
+      const pin = add(new THREE.CylinderGeometry(0.004, 0.004, 0.2, 6), gold, sd * 0.1, 0.13, 0.02, head); pin.rotation.z = sd * 1.0;
+      for (let k = 0; k < 3; k++) for (let b = 0; b < 4; b++) add(new THREE.SphereGeometry(b === 3 ? 0.009 : 0.005, 8, 6), b === 3 ? mat(0xc8102e, {roughness:0.2}) : gold, sd * (0.17 + k * 0.012), 0.17 - b * 0.022 - k * 0.006, 0.02 + k * 0.012, head);
+      // şakayık çiçeği
+      for (let p = 0; p < 7; p++){ const a = p / 7 * Math.PI * 2; add(new THREE.SphereGeometry(0.018, 8, 6), mat(0xe0457a, {roughness:0.5}), sd * 0.105 + Math.cos(a) * 0.016, 0.1 + Math.sin(a) * 0.016, -0.03, head).scale.z = 0.5; }
+      // küpe: altın halka ve yeşim damla
+      add(new THREE.TorusGeometry(0.008, 0.002, 6, 12), gold, sd * 0.09, -0.035, 0.0, head);
+      add(new THREE.SphereGeometry(0.011, 10, 8), mat(0x3fa070, {roughness:0.12}), sd * 0.09, -0.058, 0.0, head).scale.y = 1.4;
+    });
+    add(new THREE.SphereGeometry(0.06, 16, 12), hairM, 0, 0.14, -0.07, head).scale.set(1.2, 0.9, 1);
+    // tepe süsü: altın anka kuşu yelpazesi
+    for (let k = -3; k <= 3; k++){ const f = add(new THREE.ConeGeometry(0.012, 0.09, 5), gold, Math.sin(k * 0.28) * 0.05, 0.2 + Math.cos(k * 0.28) * 0.02, 0.03, head); f.rotation.z = -k * 0.28; }
+    add(new THREE.SphereGeometry(0.014, 10, 8), mat(0xc8102e, {roughness:0.15}), 0, 0.19, 0.045, head);
+    const braid = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([L(0, -0.02, -0.1), L(0, -0.2, -0.13), L(0.01, -0.45, -0.14), L(0, -0.62, -0.13)]), 16, 0.032, 8);
+    add(braid, hairM, 0, 0, 0, head);
+    // geniş, yere doğru sarkan kollar; eller önde, sağ elde açık yelpaze
+    const arms = [-1, 1].map(sd => {
+      const sh = new THREE.Group(); sh.position.set(sd * 0.17, 1.43, 0); g.add(sh);
+      const sl = new THREE.LatheGeometry([V(0.05, 0), V(0.07, -0.12), V(0.13, -0.3), V(0.2, -0.5), V(0.22, -0.56)], 18); sl.scale(1, 1, 0.75);
+      add(sl, silkM, 0, 0, 0, sh);
+      sh.rotation.z = sd * 0.16; sh.rotation.x = -0.35;
+      return sh;
+    });
+    [-1, 1].forEach(sd => add(new THREE.SphereGeometry(0.026, 10, 8), skin, sd * 0.06, 1.08, 0.24, g).scale.set(0.7, 1.1, 0.5));
+    // açık yelpaze: krem ipek üstüne erik dalı ve kırmızı mühür, bambu çubuklar
+    const fanTex = cv(256, 256, (x) => {
+      x.fillStyle = '#f6eedc'; x.fillRect(0, 0, 256, 256);
+      x.strokeStyle = '#3a2a1e'; x.lineWidth = 5; x.beginPath(); x.moveTo(40, 120); x.quadraticCurveTo(110, 70, 210, 60); x.stroke();
+      x.lineWidth = 3; x.beginPath(); x.moveTo(120, 90); x.quadraticCurveTo(140, 50, 170, 40); x.stroke();
+      for (let k = 0; k < 9; k++){ const px = 60 + k * 18, py = 110 - k * 6 + (k % 2) * 14; x.fillStyle = '#e0457a'; for (let p = 0; p < 5; p++){ const a = p / 5 * Math.PI * 2; x.beginPath(); x.arc(px + Math.cos(a) * 5, py + Math.sin(a) * 5, 4, 0, Math.PI * 2); x.fill(); } }
+      x.fillStyle = '#c8102e'; x.fillRect(196, 96, 18, 18);
+    });
+    const fan = new THREE.Group(); fan.position.set(0.1, 1.16, 0.27); fan.rotation.set(-0.25, -0.3, 0); fan.userData.anim = true; g.add(fan);
+    add(new THREE.CircleGeometry(0.2, 24, Math.PI * 0.12, Math.PI * 0.76), new THREE.MeshStandardMaterial({map:fanTex, roughness:0.6, side:THREE.DoubleSide}), 0, 0, 0, fan, false);
+    for (let k = 0; k <= 8; k++){ const a = Math.PI * 0.12 + k / 8 * Math.PI * 0.76, r = add(new THREE.BoxGeometry(0.004, 0.2, 0.003), woodD, Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0.002, fan, false); r.rotation.z = a - Math.PI / 2; }
+    return {g, head, fan, arms};
   }
   const say = (name, lines) => ui.dialog((Array.isArray(lines) ? lines : [lines]).map(text => ({name, text})));
 
@@ -494,6 +633,38 @@ export function buildChina(world, C, hooks){
     [-1, 1].forEach(sd => { ding(sd * 15, -25, 1.1); lion(sd * 7.5, 6, 0, 1.2, mat(0x8a6a2a, {metalness:0.8, roughness:0.35})); });
     // güneş saati ve bronz turna
     { const y = top; const s = add(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 24), marbleW, -20, y + 1.6, -26); s.rotation.x = 0.7; add(new THREE.BoxGeometry(1.2, 1.5, 1.2), marbleW, -20, y + 0.75, -26); cCircle(-20, -26, 1); }
+
+    // avlu: "altın tuğla" döşeme, ortada mermer imparator yolu, saksıda bonsai çamları, bronz turna ve kaplumbağa, bayrak direkleri
+    const [bc, bg2] = canvas(256, 256); bg2.fillStyle = '#4a4744'; bg2.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++){ const v = 92 + rnd() * 22; bg2.fillStyle = `rgb(${v | 0},${v - 2 | 0},${v - 6 | 0})`; bg2.fillRect(x * 64 + 2, y * 64 + 2, 60, 60); }
+    const brickFloor = new THREE.MeshStandardMaterial({map:ctex(bc, (PX1 - PX0) / 5, (PZ1 - PZ0) / 5), roughness:0.55});
+    const fl = add(new THREE.PlaneGeometry(PX1 - PX0 - 2.4, PZ1 - PZ0 - 2.4), brickFloor, 0, 0.02, (PZ0 + PZ1) / 2, G, false); fl.rotation.x = -Math.PI / 2;
+    [[PZ1 - 1.2, 10], [-60, -78]].forEach(([z0, z1]) => { const len = Math.abs(z1 - z0), w = add(new THREE.PlaneGeometry(4, len), marbleW, 0, 0.03, (z0 + z1) / 2, G, false); w.rotation.x = -Math.PI / 2; });
+    const potM = mat(0x2a4caf, {roughness:0.18, metalness:0.05});
+    [[-30, 34], [30, 34], [-30, -6], [30, -6], [-22, -88], [22, -88], [-44, -60], [44, -60]].forEach(([x, z]) => {
+      add(lathe([[0, 0], [0.5, 0], [0.75, 0.4], [0.8, 0.8], [0.7, 1.0], [0.75, 1.05]], 18), potM, x, 0, z);
+      add(new THREE.CylinderGeometry(0.1, 0.18, 1.6, 7), mat(0x4a3424), x, 1.6, z).rotation.z = 0.3;
+      [[0.5, 2.3, 1.1], [-0.4, 2.0, 0.8], [0.1, 2.7, 0.7]].forEach(([dx, y, r2]) => add(new THREE.SphereGeometry(r2, 9, 6), mat(0x2f5a2a, {roughness:0.9}), x + dx, y, z).scale.y = 0.35);
+      cCircle(x, z, 0.85);
+    });
+    const bz2 = mat(0x5a4526, {metalness:0.85, roughness:0.38});
+    [-1, 1].forEach(sd => {
+      const tx2 = sd * 17, tz2 = -28, ty2 = 3.9;
+      add(new THREE.SphereGeometry(0.8, 14, 10), bz2, tx2, ty2 + 0.5, tz2).scale.set(1, 0.5, 1.3);
+      add(new THREE.SphereGeometry(0.3, 10, 8), bz2, tx2, ty2 + 0.6, tz2 + 1.1).scale.set(0.9, 0.8, 1.4);
+      const cx2 = sd * 19.5;
+      add(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 6), bz2, cx2, ty2 + 0.5, tz2); add(new THREE.SphereGeometry(0.35, 12, 10), bz2, cx2, ty2 + 1.2, tz2).scale.set(0.7, 0.8, 1.3);
+      add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([L(cx2, ty2 + 1.35, tz2 + 0.3), L(cx2, ty2 + 2.1, tz2 + 0.4), L(cx2, ty2 + 2.4, tz2 + 0.65)]), 8, 0.06, 6), bz2, 0, 0, 0);
+      add(new THREE.ConeGeometry(0.05, 0.35, 6), bz2, cx2, ty2 + 2.4, tz2 + 0.9).rotation.x = Math.PI / 2;
+      cCircle(tx2, tz2, 0.9); cCircle(cx2, tz2, 0.5);
+      // bayrak direği ve sarı ejderha sancağı
+      const fx = sd * 40, fz = 20;
+      add(new THREE.CylinderGeometry(0.12, 0.16, 12, 8), red, fx, 6, fz); add(new THREE.SphereGeometry(0.25, 10, 8), gold, fx, 12.1, fz); cCircle(fx, fz, 0.3);
+      const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.6), new THREE.MeshStandardMaterial({color:0xe8b820, side:THREE.DoubleSide, roughness:0.6}));
+      flag.geometry.translate(1.3, 0, 0); flag.position.set(fx, 11, fz); flag.userData.keep = true; G.add(flag); flutter.push({m:flag, axis:'y', base:sd > 0 ? Math.PI : 0, ph:sd * 2, k:0.4});
+    });
+    // muhafız sırası
+    [38, 32, 12, 6].forEach(gz => [-1, 1].forEach(sd => person(sd * 9, gz, sd > 0 ? -Math.PI / 2 : Math.PI / 2, 'Saray muhafızı', {robe:0x8a1c1c, trim:0xd4af37, hat:'komutan'}, () => say('Saray muhafızı', ['İmparatorun avlusunda yüksek sesle konuşulmaz, elçi.']))));
     // Huzur salonu (arkada)
     const top2 = terraces(0, -100, [[34, 20, 1.0]], 8, 4);
     hallC({x:0, z:-101, y:top2, w:26, d:12, h:5.6, roofMat:tileY, lift:1.3});
@@ -529,6 +700,64 @@ export function buildChina(world, C, hooks){
       const y = 0; add(new THREE.BoxGeometry(1.1, 0.5, 1.1), stoneG, sd * 10, y + 0.25, z);
       const f = figure({robe:0x8a877e, trim:0x77746c, hat:'komutan', sash:0x77746c}); f.traverse(o => { if (o.isMesh && o.material !== eyeM) o.material = stoneG; });
       f.position.set(sd * 10, 0.5, z); f.scale.setScalar(1.6); f.rotation.y = -sd * Math.PI / 2; G.add(f); cCircle(sd * 10, z, 0.8);
+    });
+  }
+
+
+  /* ================= Dokuz Ejderha Duvarı ve ejderhalı mermer sütunlar (huabiao) ================= */
+  {
+    // sırlı çini duvar: dalgalı deniz ve bulutlar üstünde inci kovalayan dokuz ejderha
+    const NW = {x:0, z:-152, w:32, h:6.2};
+    const [c, g] = canvas(2048, 400);
+    const bgG = g.createLinearGradient(0, 0, 0, 400); bgG.addColorStop(0, '#2f7a8a'); bgG.addColorStop(0.6, '#1f5a7a'); bgG.addColorStop(1, '#16405e');
+    g.fillStyle = bgG; g.fillRect(0, 0, 2048, 400);
+    g.strokeStyle = 'rgba(220,240,240,.55)'; g.lineWidth = 4;
+    for (let i = 0; i < 30; i++){ const x = rnd() * 2048, y = 40 + rnd() * 200; g.beginPath(); for (let k = 0; k < 4; k++) g.arc(x + k * 22, y, 11, Math.PI, Math.PI * 2.4); g.stroke(); }
+    for (let x = 0; x < 2048; x += 40){ g.fillStyle = '#e8f4f4'; g.beginPath(); g.arc(x + 20, 360, 20, Math.PI, Math.PI * 2); g.fill(); g.fillStyle = '#2a6a8a'; g.beginPath(); g.arc(x + 20, 366, 13, Math.PI, Math.PI * 2); g.fill(); }
+    const cols = ['#f2efe6', '#7a4ab0', '#3a6ad0', '#e07a2a', '#e8b830', '#e07a2a', '#3a6ad0', '#7a4ab0', '#f2efe6'];
+    cols.forEach((col, k) => {
+      const cx = (k + 0.5) * 2048 / 9, dir = k % 2 ? 1 : -1, pts = [];
+      for (let s = 0; s <= 1.0001; s += 0.02) pts.push([cx + dir * 70 * Math.sin(s * Math.PI * 2.6 + k) , 70 + s * 250 + 30 * Math.sin(s * 10)]);
+      const stroke = (w, st) => { g.strokeStyle = st; g.lineWidth = w; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y * (1 - i / pts.length * 0.0)) : g.moveTo(x, y)); g.stroke(); };
+      stroke(34, '#3a2010'); stroke(28, col);
+      g.fillStyle = 'rgba(0,0,0,.18)'; pts.forEach(([x, y], i) => { if (i % 2) return; g.beginPath(); g.arc(x, y, 5, 0, Math.PI); g.fill(); });
+      g.fillStyle = '#c8102e'; pts.forEach(([x, y], i) => { if (i % 3 || i < 3) return; g.beginPath(); g.moveTo(x - 6, y - 12); g.lineTo(x, y - 26); g.lineTo(x + 6, y - 12); g.fill(); });
+      [8, 26].forEach(i => { const [x, y] = pts[i]; g.strokeStyle = col; g.lineWidth = 8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 26, y + 18); g.stroke(); g.strokeStyle = '#3a2010'; g.lineWidth = 3; for (let f = -1; f <= 1; f++){ g.beginPath(); g.moveTo(x + 26, y + 18); g.lineTo(x + 34 + f * 6, y + 28); g.stroke(); } });
+      const [hx, hy] = pts[0];
+      g.fillStyle = col; g.strokeStyle = '#3a2010'; g.lineWidth = 3; g.beginPath(); g.ellipse(hx, hy, 34, 24, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = '#c8102e'; g.beginPath(); g.moveTo(hx + dir * 10, hy + 4); g.lineTo(hx + dir * 44, hy - 2); g.lineTo(hx + dir * 40, hy + 18); g.fill();
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(hx + dir * 8, hy - 8, 6, 0, Math.PI * 2); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(hx + dir * 9, hy - 8, 3, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#d8c48e'; g.lineWidth = 5; [-1, 1].forEach(h => { g.beginPath(); g.moveTo(hx - dir * 10, hy - 18); g.quadraticCurveTo(hx - dir * 30, hy - 40 - h * 6, hx - dir * 46, hy - 36 - h * 14); g.stroke(); });
+      g.strokeStyle = '#f2efe6'; g.lineWidth = 2; g.beginPath(); g.moveTo(hx + dir * 34, hy); g.bezierCurveTo(hx + dir * 70, hy - 10, hx + dir * 60, hy + 40, hx + dir * 90, hy + 30); g.stroke();
+      const pg = g.createRadialGradient(hx + dir * 80, hy - 30, 2, hx + dir * 80, hy - 30, 18); pg.addColorStop(0, '#ffffff'); pg.addColorStop(1, '#f0c040');
+      g.fillStyle = pg; g.beginPath(); g.arc(hx + dir * 80, hy - 30, 15, 0, Math.PI * 2); g.fill();
+    });
+    g.strokeStyle = '#d4a020'; g.lineWidth = 14; g.strokeRect(7, 7, 2034, 386); g.strokeStyle = '#2f7a4a'; g.lineWidth = 6; g.strokeRect(20, 20, 2008, 360);
+    const wallG = new THREE.Group(); wallG.position.set(NW.x, 0, NW.z); G.add(wallG);
+    add(new THREE.BoxGeometry(NW.w + 1.2, 1.0, 2.4), marbleW, 0, 0.5, 0, wallG);
+    add(new THREE.BoxGeometry(NW.w, NW.h, 1.6), red, 0, 1 + NW.h / 2, 0, wallG);
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(NW.w - 0.6, NW.h - 0.8), new THREE.MeshStandardMaterial({map:ctex(c), roughness:0.25, metalness:0.05}));
+    panel.position.set(0, 1 + NW.h / 2, 0.81); panel.userData.keep = true; wallG.add(panel);
+    add(new THREE.BoxGeometry(NW.w + 0.6, 0.6, 2.0), bandMat, 0, 1 + NW.h + 0.3, 0, wallG);
+    roof(wallG, {type:'rect', W:NW.w + 2.4, D:3.4}, 1.4, tileY, 1 + NW.h + 0.6, {lift:0.6, seg:8, rings:6});
+    cBox(NW.x, NW.z, NW.w / 2 + 0.6, 1.2);
+    // huabiao: Öğle Kapısı önünde, üstünde bekçi yaratık oturan, gövdesine ejderha sarılı mermer sütunlar
+    const carved = mat(0xeee6cf, {roughness:0.35});
+    [-1, 1].forEach(sd => {
+      const x = sd * 13, z = 64;
+      add(new THREE.BoxGeometry(2.4, 0.8, 2.4), marbleW, x, 0.4, z);
+      add(new THREE.CylinderGeometry(0.55, 0.6, 9, 8), marbleW, x, 0.8 + 4.5, z);
+      const hel = []; for (let i = 0; i <= 60; i++){ const t = i / 60, a = t * Math.PI * 5.2; hel.push(L(x + Math.cos(a) * 0.68, 1.6 + t * 6.6, z + Math.sin(a) * 0.68)); }
+      add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hel), 140, 0.2, 8), carved, 0, 0, 0);
+      const top = hel[hel.length - 1]; add(new THREE.SphereGeometry(0.3, 12, 10), carved, top.x, top.y + 0.1, top.z).scale.set(1, 0.8, 1.4);
+      [-1, 1].forEach(h => { const hn = add(new THREE.ConeGeometry(0.06, 0.4, 6), carved, top.x + h * 0.12, top.y + 0.4, top.z); hn.rotation.x = -0.4; });
+      for (let i = 6; i < 60; i += 6){ const pnt = hel[i]; add(new THREE.ConeGeometry(0.07, 0.3, 5), carved, pnt.x, pnt.y + 0.22, pnt.z); }
+      add(new THREE.BoxGeometry(2.8, 0.7, 0.22), carved, x, 7.6, z);
+      [-1, 1].forEach(h => add(new THREE.SphereGeometry(0.42, 10, 8), carved, x + h * 1.35, 7.6, z).scale.set(1, 0.8, 0.3));
+      add(new THREE.CylinderGeometry(0.95, 0.8, 0.35, 16), marbleW, x, 9.95, z);
+      add(new THREE.SphereGeometry(0.42, 12, 10), carved, x, 10.45, z).scale.set(0.9, 1.1, 1.2);
+      add(new THREE.SphereGeometry(0.28, 12, 10), carved, x, 10.95, z + 0.18);
+      cCircle(x, z, 1.3);
     });
   }
 
@@ -683,7 +912,7 @@ export function buildChina(world, C, hooks){
     for (let i = 0; i < 40; i++){ const a = i / 40 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a - 2.16), Math.cos(a - 2.16))) < 0.2) continue; add(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6), bamboo, CLEAR.x + Math.sin(a) * (CLEAR.r + 1), 0.55, CLEAR.z + Math.cos(a) * (CLEAR.r + 1)); }
     // pandalar
     const Wt = mat(0xf1eee4, {roughness:0.95}), Bk = mat(0x1d1c1e, {roughness:0.95});
-    for (let i = 0; i < 4; i++){
+    for (let i = 0; i < 5; i++){
       const g = new THREE.Group(), body = new THREE.Group(); body.position.y = 0.62; g.add(body); body.userData.anim = true;
       add(new THREE.SphereGeometry(0.5, 16, 12), Wt, 0, 0, 0, body).scale.set(1, 0.9, 1.35);
       add(new THREE.SphereGeometry(0.52, 16, 8), Bk, 0, 0.02, 0.28, body).scale.set(1.02, 0.92, 0.42);
@@ -696,10 +925,11 @@ export function buildChina(world, C, hooks){
       [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => { const l = new THREE.Group(); l.position.set(sx * 0.3, 0.5, sz * 0.38); g.add(l); add(new THREE.CylinderGeometry(0.15, 0.14, 0.55, 10), Bk, 0, -0.25, 0, l); l.userData.anim = true; legs.push(l); });
       const stick = add(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mat(0x7aa04a), 0.15, -0.1, 0.42, head); stick.rotation.set(0.3, 0, 1.2); stick.visible = false;
       const a = i * 1.6, x = CLEAR.x + Math.sin(a) * 6, z = CLEAR.z + Math.cos(a) * 6;
-      g.position.set(x, 0, z); g.rotation.y = rnd() * 6; g.userData.dyn = true; G.add(g);
-      pandas.push({g, body, head, legs, stick, x, z, yaw:g.rotation.y, tx:x, tz:z, wait:rnd() * 4, sit:0, phase:rnd() * 6});
+      const k = i === 4 ? 0.55 : 1;   // beşincisi yavru: annesinin (ilk panda) peşinden gider
+      g.position.set(x, 0, z); g.rotation.y = rnd() * 6; g.scale.setScalar(k); g.userData.dyn = true; G.add(g);
+      pandas.push({g, body, head, legs, stick, x, z, yaw:g.rotation.y, tx:x, tz:z, wait:rnd() * 4, sit:0, phase:rnd() * 6, k, follow:i === 4 ? 0 : null});
     }
-    C.dynamics.push(() => pandas.map(p => ({x:CX + p.x, z:CZ + p.z, r:0.7})));
+    C.dynamics.push(() => pandas.map(p => ({x:CX + p.x, z:CZ + p.z, r:0.7 * p.k})));
   }
 
   /* ================= LOTUS-KOİ GÖLETİ ve AY KÖPRÜSÜ ================= */
@@ -729,6 +959,10 @@ export function buildChina(world, C, hooks){
     add(bg, marbleW, BX, 0, BZ);
     [-1, 1].forEach(sd => { for (let i = -7; i <= 7; i++){ const s = i; add(new THREE.BoxGeometry(0.16, 0.8, 0.16), marbleW, BX + sd * 1.2, deck(s) + 0.4, BZ - s); } const pts = []; for (let i = -16; i <= 16; i++){ const s = i / 2; pts.push(L(BX + sd * 1.2, deck(s) + 0.82, BZ - s)); } add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 5), marbleW, 0, 0, 0); });
     hfns.push((lx, lz) => Math.abs(lx - BX) < 1.25 && Math.abs(lz - BZ) < S ? deck(lz - BZ) : null);
+    // köprünün dolu gövdesi: güvertenin altında kalan oyuncuyu dışarı iter (güvertedeki oyuncuyu etkilemez)
+    // yükseklik bantları: güverte h'den yüksekse altındaki (h - 0.35'ten alçaktaki) oyuncuyu yana iter. Alçak uçları
+    // zaten basamak kontrolü (ledge) durdurur; bant kenarları 0.5 m içeri çekik ki güvertede yürüyen takılmasın.
+    for (let h = 1.6; h < H + 0.2; h += 0.4){ const sh = 2 * S / Math.PI * Math.acos(Math.min(1, (h - 0.2) / H)) - 0.5; if (sh < 0.2) continue; const o = C.box(CX + BX, CZ + BZ, 1.45, sh); o.y0 = -5; o.y1 = h - 0.35; }
     // göl kıyısında su köşkü
     const TX = -109, TZ = 95;
     hallC({x:TX, z:TZ, w:5, d:5, h:3.4, base:0.45, roofMat:tileG, rot:Math.PI, lanternsAt:false, collide:false, open:true});
@@ -1001,15 +1235,335 @@ export function buildChina(world, C, hooks){
     [[1.15, -40, 34, 14], [1.75, -45, 40, 15]].forEach(([a, d, h, r]) => { const [x, z] = CHINA_COAST.point(a, d); peak(x, z, h, r, false); });
   }
 
+
+  /* ================= BİNA İÇLERİ ve YÙLÓNG KÖYÜ ================= */
+  // oda içindeki nesneler sonradan (ilk girişte) kurulur: renkleri bir kez doğrusal düzene çevir
+  function fixRoom(o){ o.traverse(m => { if (!m.material) return; (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => { if (!x || linMats.has(x) || x.isMeshBasicMaterial || x === M.goldMat) return; linMats.add(x); if (x.color) x.color.convertSRGBToLinear(); }); }); }
+  // odada konuşan, oyuncuya dönen kişi
+  function roomFig(R, x, z, ry, opts, name, lines){
+    const g = figure(opts); g.position.set(x, 0, z); g.rotation.y = ry; g.userData.anim = true; R.G.add(g); fixRoom(g); R.collideC(x, z, 0.4);
+    R.anim((dt, t, hero) => { const hx = hero.pos.x - (R.room.ox + x), hz = hero.pos.z - (R.room.oz + z); world.turnToward(g, Math.hypot(hx, hz) < 5 ? Math.atan2(hx, hz) : ry, Math.min(1, dt * 3)); });
+    if (name) R.interact(x, z, 'Konuş: ' + name, () => say(name, typeof lines === 'function' ? lines() : lines), 2.4);
+    return g;
+  }
+  const rp = (R, o) => { R.G.add(o); fixRoom(o); return o; };
+  // duvara asılı yazılı kırmızı kâğıt (çift dize / tek karakter)
+  function scroll(R, text, x, y, z, ry, w = 0.4, h = 1.8, bg = '#b3121e', fg = '#f0c040', vertical = true){
+    const [c, g] = canvas(vertical ? 96 : 384, vertical ? 384 : 96); g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const chars = [...text], n = chars.length, cell = (vertical ? c.height : c.width) / n;
+    g.font = 'bold ' + Math.min(cell * 0.82, (vertical ? c.width : c.height) * 0.8) + 'px ' + FONT;
+    chars.forEach((ch, i) => g.fillText(ch, vertical ? c.width / 2 : cell * (i + 0.5), vertical ? cell * (i + 0.5) : c.height / 2));
+    const m = R.add(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({map:ctex(c), roughness:0.7}), x, y, z, false); m.rotation.y = ry; return m;
+  }
+  const roomOpts = o => Object.assign({owner:'yulong', doorStyle:'rustik', windows:false, plain:true, lamp:'fener'}, o);
+  const addRoom = o => hooks.rooms && hooks.rooms.add(roomOpts(o));
+  const wpt = (lx, lz) => ({x:CX + lx, z:CZ + lz});
+
+  /* ---------- Yüce Uyum Salonu: ejderha tahtı ---------- */
+  addRoom({id:'yl-taht', name:'Yüce Uyum Salonu · Ejderha Tahtı', door:Object.assign(wpt(0, -31.2), {ry:0}), w:26, d:18, h:9, floor:'tas', walls:'alci', wallColor:0x7a1a14, ceiling:'alci', lights:3, decor:(R, r) => {
+    // kasetli tavan: mavi-yeşil kareler, altın ejderha madalyonları; ortada altın kubbe
+    const [c, g] = canvas(512, 512); g.fillStyle = '#1d3a4e'; g.fillRect(0, 0, 512, 512);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++){ const px = x * 64, py = y * 64; g.fillStyle = '#2f7a5c'; g.fillRect(px + 4, py + 4, 56, 56); g.fillStyle = '#1d4a6e'; g.fillRect(px + 10, py + 10, 44, 44); g.fillStyle = '#e2b24a'; g.beginPath(); g.arc(px + 32, py + 32, 13, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#9c2219'; g.lineWidth = 3; g.beginPath(); g.arc(px + 32, py + 32, 8, 0, Math.PI * 1.6); g.stroke(); }
+    const ce = R.add(new THREE.PlaneGeometry(r.w, r.d), new THREE.MeshStandardMaterial({map:ctex(c, r.w / 6, r.d / 6), roughness:0.5}), 0, r.h - 0.02, 0, false); ce.rotation.x = Math.PI / 2;
+    const dome = R.add(new THREE.SphereGeometry(1.6, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), R.mat(0xd4a020, {metalness:0.85, roughness:0.3, side:THREE.BackSide}), 0, r.h - 0.05, -4, false); dome.scale.y = 0.6; dome.rotation.x = Math.PI;
+    R.add(new THREE.SphereGeometry(0.3, 16, 12), R.mat(0xf6f1ea, {roughness:0.1}), 0, r.h - 1.3, -4, false);
+    // altın döşeme yolu ve ejderha halısı
+    R.rug(0, 2, 3.2, 12, {c1:'#9c1c1c', c2:'#e2b24a', c3:'#1d3a6e'});
+    // altı kırmızı sütun ve tahtın önünde altın ejderha sarılı iki sütun
+    const colM = R.mat(0x9c2219, {roughness:0.4}), goldR = R.mat(0xd4a020, {metalness:0.85, roughness:0.28});
+    [[-9, -5], [9, -5], [-9, 1], [9, 1], [-9, 6], [9, 6]].forEach(([x, z]) => { R.cyl(0.45, 0.5, r.h, colM, x, r.h / 2, z, 16); R.cyl(0.7, 0.75, 0.3, R.mat(0xeeebe3), x, 0.15, z, 16); R.collideC(x, z, 0.6); });
+    [-4.2, 4.2].forEach(x => {
+      R.cyl(0.5, 0.55, r.h, goldR, x, r.h / 2, -3.5, 18); R.collideC(x, -3.5, 0.7);
+      const pts = []; for (let i = 0; i <= 80; i++){ const t = i / 80, a = t * Math.PI * 6; pts.push(new THREE.Vector3(x + Math.cos(a) * 0.62, 0.6 + t * 7.4, -3.5 + Math.sin(a) * 0.62)); }
+      R.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 200, 0.17, 8), goldR, 0, 0, 0);
+      R.add(new THREE.SphereGeometry(0.3, 12, 10), goldR, pts[80].x, pts[80].y + 0.2, pts[80].z).scale.set(1, 0.8, 1.5);
+    });
+    // üç basamaklı kürsü, ejderha tahtı ve arkasında yedi kanatlı altın paravan
+    [[10, 5, 0.35], [8.6, 4.2, 0.35], [7.2, 3.4, 0.35]].reduce((y, [w, d, h]) => { R.box(w, h, d, R.mat(0x6a1611, {roughness:0.5}), 0, y + h / 2, -6.6); R.box(w + 0.1, 0.05, d + 0.1, goldR, 0, y + h, -6.6); return y + h; }, 0);
+    R.collide(0, -6.6, 5, 2.5);
+    const ty = 1.05;
+    R.box(2.2, 0.6, 1.2, goldR, 0, ty + 0.3, -7.2); R.box(2.0, 0.15, 1.0, R.mat(0xc8102e, {roughness:0.6}), 0, ty + 0.68, -7.1);
+    R.box(2.4, 1.9, 0.25, goldR, 0, ty + 1.55, -7.75); [-1, 1].forEach(sd => { R.box(0.25, 0.7, 1.1, goldR, sd * 1.1, ty + 0.95, -7.2); R.add(new THREE.TorusGeometry(0.22, 0.07, 8, 14), goldR, sd * 1.2, ty + 2.6, -7.75).rotation.y = Math.PI / 2; });
+    const [sc, sg] = canvas(1024, 256); sg.fillStyle = '#d4a020'; sg.fillRect(0, 0, 1024, 256);
+    for (let k = 0; k < 7; k++){ sg.strokeStyle = '#7a4a10'; sg.lineWidth = 4; sg.strokeRect(k * 146 + 4, 4, 138, 248); sg.strokeStyle = '#9c2219'; sg.lineWidth = 9; sg.beginPath(); for (let t = 0; t < 1; t += 0.02) sg.lineTo(k * 146 + 73 + Math.sin(t * 9 + k) * 40, 20 + t * 220); sg.stroke(); sg.fillStyle = '#f6f1ea'; sg.beginPath(); sg.arc(k * 146 + 73 + Math.sin(k) * 40, 24, 10, 0, Math.PI * 2); sg.fill(); }
+    R.add(new THREE.PlaneGeometry(8, 3.6), new THREE.MeshStandardMaterial({map:ctex(sc), roughness:0.35, metalness:0.4}), 0, ty + 1.8, -8.75, false);
+    const p = rp(R, plaque('建極綏猷', 4.4, 1.3)); p.position.set(0, 6.6, -8.9);
+    // bronz turna ve fil, kazanlar
+    [-1, 1].forEach(sd => {
+      const cx = sd * 3.3, cz = -5.4, bz = R.mat(0x5a4526, {metalness:0.85, roughness:0.38});
+      R.cyl(0.03, 0.03, 0.9, bz, cx, ty + 0.45, cz, 6); R.add(new THREE.SphereGeometry(0.28, 12, 10), bz, cx, ty + 1.05, cz).scale.set(0.8, 0.9, 1.4);
+      R.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(cx, ty + 1.2, cz + 0.25), new THREE.Vector3(cx, ty + 1.8, cz + 0.35), new THREE.Vector3(cx, ty + 2.1, cz + 0.55)]), 8, 0.05, 6), bz, 0, 0, 0);
+      R.add(new THREE.ConeGeometry(0.04, 0.3, 6), bz, cx, ty + 2.1, cz + 0.75).rotation.x = Math.PI / 2;
+      const el = R.mat(0x2f6ab0, {roughness:0.3});
+      R.add(new THREE.SphereGeometry(0.45, 14, 10), el, sd * 6.2, 0.8, -5.6).scale.set(0.9, 0.8, 1.3);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => R.cyl(0.12, 0.12, 0.5, el, sd * 6.2 + a * 0.25, 0.25, -5.6 + b * 0.35, 8));
+      R.add(new THREE.ConeGeometry(0.1, 0.6, 8), el, sd * 6.2, 0.6, -5.0).rotation.x = 2.6; R.collideC(sd * 6.2, -5.6, 0.7);
+      R.add(lathe([[0, 0.7], [0.5, 0.72], [0.62, 0.95], [0.64, 1.35], [0.7, 1.42], [0.58, 1.44]], 18), bz, sd * 7.5, 0, 0); R.collideC(sd * 7.5, 0, 0.7);
+    });
+    roomFig(R, 0, -6.2, 0, {robe:0xe8b820, trim:0x1d3a6e, hat:'resmi', sash:0xc8102e}, 'Göğün Oğlu, İmparator', () => [
+      'Denizlerin ötesinden ejderhayla gelen elçi… Yùlóng\'un kapıları dostlara açıktır.',
+      st().prestige >= 80 ? 'Takasların sarayımızı zenginleştirdi. Lumière ile aramızdaki ipek yol hiç kopmasın.' : 'Atölyelerimizin hazinelerini Lumière\'e taşı; dostluk, alışverişle büyür.',
+    ]);
+    [[-6, 3], [6, 3]].forEach(([x, z]) => roomFig(R, x, z, x < 0 ? Math.PI / 2 : -Math.PI / 2, {robe:0x8a1c1c, trim:0xd4af37, hat:'komutan'}, 'Saray muhafızı', ['Tahtın önünde başını eğ, elçi.']));
+  }});
+
+  /* ---------- Huzur Salonu: imparatorluk kütüphanesi ---------- */
+  addRoom({id:'yl-kutuphane', name:'Huzur Salonu · İmparatorluk Kütüphanesi', door:Object.assign(wpt(0, -91.5), {ry:0}), w:20, d:12, h:6.5, floor:'ahsap', walls:'alci', wallColor:0x6a1a14, ceiling:'kiris', lights:2, decor:(R, r) => {
+    // tomar rafları: kırmızı lake dolaplar, sarılı rulolar ve iplikle bağlı kitap kutuları
+    const lac = R.mat(0x7a1610, {roughness:0.4}), scrollCols = [0xf2e6c8, 0xe8d8a8, 0xd8c890], ribbon = [0xc8102e, 0x2f6a4a, 0x1d3a6e, 0xd4a020];
+    const shelf = (x, z, ry, w = 3) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; R.G.add(g);
+      R.box(w, 3.4, 0.6, lac, 0, 1.7, -0.05, 0, g);
+      for (let k = 0; k < 5; k++){ R.box(w - 0.2, 0.05, 0.5, R.mat(0x4a0e0a), 0, 0.35 + k * 0.62, 0.05, 0, g);
+        for (let i = 0; i < Math.floor((w - 0.4) / 0.16); i++){ const sc = R.cyl(0.06, 0.06, 0.45, R.mat(scrollCols[(i + k) % 3], {roughness:0.8}), -w / 2 + 0.3 + i * 0.16, 0.44 + k * 0.62, 0.1, 8, g); sc.rotation.x = Math.PI / 2; if (i % 4 === 0) R.cyl(0.065, 0.065, 0.04, R.mat(ribbon[(i + k) % 4]), -w / 2 + 0.3 + i * 0.16, 0.44 + k * 0.62, 0.28, 8, g).rotation.x = Math.PI / 2; } }
+      R.collide(x, z, w / 2, 0.4, ry); };
+    [-6.5, -3.2, 3.2, 6.5].forEach(x => shelf(x, -r.d / 2 + 0.45, 0));
+    [-3, 0, 3].forEach(z => { shelf(-r.w / 2 + 0.45, z, Math.PI / 2, 2.6); shelf(r.w / 2 - 0.45, z, -Math.PI / 2, 2.6); });
+    // hat masası: fırçalar, mürekkep taşı, açık tomar; yanında hat yazan bilgin
+    R.table(0, -1, {w:3.0, d:1.3, h:0.8, top:R.mat(0x3a1a10, {roughness:0.35}), leg:R.mat(0x2a1008)});
+    const [c, g] = canvas(512, 160); g.fillStyle = '#f4ead2'; g.fillRect(0, 0, 512, 160); g.fillStyle = '#1a1210'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 96px ' + FONT; g.fillText('學而時習之', 256, 84);
+    const pap = R.add(new THREE.PlaneGeometry(1.8, 0.56), new THREE.MeshStandardMaterial({map:ctex(c), roughness:0.9}), 0, 0.83, -1, false); pap.rotation.x = -Math.PI / 2;
+    R.box(0.3, 0.05, 0.2, R.mat(0x111111, {roughness:0.2}), 1.2, 0.83, -1.3);
+    for (let i = 0; i < 5; i++) R.cyl(0.012, 0.012, 0.32, R.mat(0x8a6a3a), -1.3 + i * 0.07, 0.82, -1.45, 6).rotation.x = Math.PI / 2;
+    // duvar resmi: dağlar ve sis (mürekkep manzarası), hat yazıları
+    const [lc, lg] = canvas(256, 512); lg.fillStyle = '#efe6d0'; lg.fillRect(0, 0, 256, 512);
+    [[60, 380, '#7a7a74'], [170, 300, '#5a5a56'], [110, 220, '#3a3a38']].forEach(([x, y, col]) => { lg.fillStyle = col; lg.beginPath(); lg.moveTo(x - 90, y + 80); lg.quadraticCurveTo(x, y - 160, x + 90, y + 80); lg.fill(); });
+    lg.fillStyle = 'rgba(239,230,208,.7)'; lg.fillRect(0, 330, 256, 30); lg.fillStyle = '#b3121e'; lg.fillRect(200, 60, 22, 22);
+    R.add(new THREE.PlaneGeometry(1.4, 2.8), new THREE.MeshStandardMaterial({map:ctex(lc), roughness:0.85}), 0, 3.1, -r.d / 2 + 0.06, false);
+    scroll(R, '書山有路勤為徑', -1.4, 3.0, -r.d / 2 + 0.07, 0, 0.36, 2.5, '#f2e6c8', '#1a1210');
+    scroll(R, '學海無涯苦作舟', 1.4, 3.0, -r.d / 2 + 0.07, 0, 0.36, 2.5, '#f2e6c8', '#1a1210');
+    roomFig(R, 1.4, 0.2, Math.PI, {robe:0x2f3a5a, trim:0xe8d7a8, hat:'bilgin'}, 'Saray kütüphanecisi Hàn Lín', ['Burada on bin tomar var: tarih, şiir, tıp, astronomi… Konfüçyüs\'ün sözleri en üst rafta.', 'Masadaki yazı "Öğrenip de tekrar etmek" der. Lumière\'in kütüphanesi de bu kadar büyük mü?']);
+  }});
+
+  /* ---------- pagoda: Buda tapınağı ---------- */
+  addRoom({id:'yl-pagoda', name:'Bulut Çanı Pagodası · Buda Salonu', door:Object.assign(wpt(78, -160.4), {ry:0}), w:10, d:10, h:6.5, floor:'ahsap', walls:'shoji', ceiling:'kiris', lights:1, decor:(R, r) => {
+    const goldB = R.mat(0xd8a830, {metalness:0.85, roughness:0.25});
+    // lotus kaidesi üstünde oturan altın Buda ve ardında hale
+    const pet = R.mat(0xe88aa2, {roughness:0.5});
+    R.box(3.2, 0.8, 2.2, R.mat(0x6a1611), 0, 0.4, -3.8); R.collide(0, -3.8, 1.7, 1.2);
+    for (let i = 0; i < 14; i++){ const a = i / 14 * Math.PI * 2, pe = R.add(new THREE.SphereGeometry(0.32, 10, 8), pet, Math.sin(a) * 0.85, 1.0, -3.8 + Math.cos(a) * 0.6); pe.scale.set(0.6, 0.45, 1.2); pe.rotation.y = a; }
+    R.add(lathe([[0, 0], [1.0, 0.05], [0.95, 0.35], [0.55, 0.7], [0.45, 1.3], [0.3, 1.6], [0, 1.65]], 20), goldB, 0, 1.0, -3.8).scale.z = 0.8;
+    R.add(new THREE.SphereGeometry(0.34, 18, 14), goldB, 0, 2.95, -3.8); R.add(new THREE.SphereGeometry(0.16, 12, 10), goldB, 0, 3.3, -3.82);
+    [-1, 1].forEach(sd => R.add(new THREE.SphereGeometry(0.09, 8, 6), goldB, sd * 0.33, 2.9, -3.8).scale.y = 1.8);
+    R.add(new THREE.SphereGeometry(0.16, 10, 8), goldB, 0, 1.75, -3.35).scale.set(1.6, 0.6, 1);
+    R.add(new THREE.TorusGeometry(1.1, 0.06, 8, 40), goldB, 0, 2.9, -4.3, false);
+    R.add(new THREE.CircleGeometry(1.05, 32), new THREE.MeshBasicMaterial({color:new THREE.Color(1.2, 0.85, 0.35), toneMapped:false, transparent:true, opacity:0.35}), 0, 2.9, -4.32, false);
+    // sunak: mumlar, meyve, tütsü, çiçek
+    R.table(0, -1.9, {w:2.2, d:0.7, h:0.85, top:R.mat(0x9c2219, {roughness:0.4}), leg:R.mat(0x4a1210)});
+    R.candles(-0.8, 0.85, -1.9); R.candles(0.8, 0.85, -1.9);
+    for (let i = 0; i < 5; i++) R.add(new THREE.SphereGeometry(0.07, 8, 6), R.mat(0xff8a1a), -0.15 + (i % 3) * 0.1, 0.92 + Math.floor(i / 3) * 0.1, -1.9);
+    R.add(lathe([[0, 0], [0.18, 0], [0.22, 0.12], [0.2, 0.2]], 14), R.mat(0x5a4526, {metalness:0.85, roughness:0.38}), 0.35, 0.85, -1.9);
+    for (let i = 0; i < 3; i++) R.cyl(0.006, 0.006, 0.35, R.mat(0x8a2a1a), 0.33 + i * 0.03, 1.08, -1.9, 4);
+    // dua minderleri, tahta balık davulu, sarkan ipek flamalar
+    [-1.2, 0, 1.2].forEach(x => R.cyl(0.35, 0.38, 0.18, R.mat(0xd8a020, {roughness:0.9}), x, 0.09, 0.4, 16));
+    R.add(new THREE.SphereGeometry(0.25, 12, 10), R.mat(0x8a2a1a, {roughness:0.4}), 2.6, 0.3, -1.2).scale.set(1.2, 0.8, 1);
+    ['#c8102e', '#e8b830', '#2f7a5c', '#2a6ad0'].forEach((col, i) => { const b = R.box(0.5, 2.4, 0.02, R.mat(new THREE.Color(col).getHex(), {roughness:0.6, side:THREE.DoubleSide}), -3.6 + i * 2.4, r.h - 1.5, -4.6); b.castShadow = false; });
+    scroll(R, '南無阿彌陀佛', -4.9, 2.4, 0, Math.PI / 2, 0.5, 2.6, '#f2e6c8', '#3a2010');
+    scroll(R, '心靜自然涼', 4.9, 2.4, 0, -Math.PI / 2, 0.5, 2.4, '#f2e6c8', '#3a2010');
+    roomFig(R, -2.4, -1.2, Math.PI / 4, {robe:0xd88a1a, trim:0x8a2a1a, hat:'kesis', sash:0x8a2a1a}, 'Rahip Huìnéng', ['Buda\'nın önünde bir an sus ve nefesini dinle.', 'Dua etmek istersen sunağın önüne diz çök.']);
+    R.interact(0, -0.4, 'Sunak önünde dua et', async () => { if (!ready('dua', 40, 'Zihnin hâlâ dingin.')) return; sfx('bell'); await say('Buda Salonu', 'Mumların ışığında içindeki sesler susuyor…'); gain({culture:2, why:'Dua'}); }, 1.8);
+  }});
+
+  /* ---------- zanaat atölyeleri ---------- */
+  const shopRoom = (key, z, name, decor) => addRoom({id:'yl-' + key, name, door:Object.assign(wpt(77.6, z), {ry:-Math.PI / 2}), w:12, d:8, h:4.6, floor:'toprak', walls:'ahsap', ceiling:'kiris', lights:2, decor});
+  const vaseIn = (R, x, y, z, k, type) => { const prof = [[[0, 0], [0.18, 0], [0.24, 0.12], [0.32, 0.45], [0.28, 0.72], [0.12, 0.86], [0.1, 1.0], [0.14, 1.06]], [[0, 0], [0.14, 0], [0.26, 0.2], [0.28, 0.5], [0.18, 0.7], [0.08, 0.8], [0.08, 1.1], [0.12, 1.15]], [[0, 0], [0.22, 0], [0.3, 0.15], [0.32, 0.35], [0.25, 0.42]]][type % 3]; R.add(lathe(prof, 18), vaseMat, x, y, z).scale.setScalar(k); };
+  shopRoom('porselen', 62, 'Porselen Atölyesi', (R, r) => {
+    R.fireplace(0, -3.6, 0, {w:2.2, rustic:true});
+    R.counter(-3.2, 0, {w:3.2, d:1.0, top:R.mat(0x8a6a48), ry:Math.PI / 2});
+    for (let i = 0; i < 5; i++){ vaseIn(R, -3.2, 0.95, -1.2 + i * 0.6, 0.45 + (i % 2) * 0.15, i); }
+    [[-4.6, -3.4], [4.6, -3.4], [4.6, 0]].forEach(([x, z], k) => { const sh = R.shelf(x, 1.3, z, x < 0 ? Math.PI / 2 : -Math.PI / 2, 2.2, 'jars'); for (let i = 0; i < 4; i++) vaseIn(R, x + (x < 0 ? 0.16 : -0.16), 1.32 + 0.05, z - 0.8 + i * 0.5, 0.3, i + k); });
+    // dönen çömlekçi çarkı
+    const wheel = R.dyn(); wheel.position.set(2.2, 0, 1.2);
+    R.cyl(0.6, 0.6, 0.08, R.mat(0x5a3a22), 0, 0.62, 0, 24, wheel); R.cyl(0.08, 0.1, 0.6, R.mat(0x3a2414), 0, 0.3, 0, 8, wheel);
+    R.add(lathe([[0, 0], [0.2, 0], [0.26, 0.15], [0.2, 0.32], [0.14, 0.36]], 16), R.mat(0xb8a890, {roughness:0.9}), 0, 0.66, 0, true, wheel);
+    R.anim(dt => { wheel.rotation.y += dt * 4; }); R.collideC(2.2, 1.2, 0.7);
+    R.table(-0.6, 1.8, {w:1.6, d:0.8}); [0, 1, 2].forEach(i => R.cyl(0.08, 0.06, 0.06, R.mat(0x1f3f9a, {roughness:0.3}), -1.1 + i * 0.4, 0.82, 1.8, 12));
+    scroll(R, '景德瓷', 5.9, 2.6, 2.6, -Math.PI / 2, 0.45, 1.5);
+    roomFig(R, 1.2, 2.6, Math.PI, {robe:0x1d3a6e, trim:0xe8d7a8, hat:'bilgin'}, 'Çırak Xiǎo Lǐ', ['Ustam en ince kâseleri yumurta kabuğu kadar ince yapar; ışığa tutunca parlar.', 'Kobalt mavisini sırın altına çizeriz; fırında maviye döner.']);
+  });
+  shopRoom('ipek', 102, 'İpek Evi', (R, r) => {
+    R.loom(-2.6, -2.2, 0, 0xc8102e); R.loom(2.6, -2.2, 0, 0xd4a020);
+    R.bolts(-4.4, 1.4, 1.6, Math.PI / 2); R.bolts(4.4, 1.4, 1.6, -Math.PI / 2, [0x2a6ac8, 0x2f9a6a, 0xe0457a, 0xf2e6d0, 0x7a3ab8]);
+    // ipek böceği tepsileri: raflarda beyaz kozalar
+    for (let k = 0; k < 3; k++){ R.box(1.6, 0.04, 0.9, R.mat(0xb39554), 0, 0.6 + k * 0.55, 2.4); for (let i = 0; i < 12; i++) R.add(new THREE.SphereGeometry(0.05, 6, 5), R.mat(0xf8f4ea, {roughness:0.6}), -0.6 + (i % 6) * 0.24, 0.66 + k * 0.55, 2.2 + Math.floor(i / 6) * 0.35).scale.set(1, 0.8, 1.5); }
+    [[-0.85, 2.0], [0.85, 2.0], [-0.85, 2.8], [0.85, 2.8]].forEach(([x, z]) => R.box(0.05, 1.8, 0.05, R.mat(0x5a3a22), x, 0.9, z)); R.collide(0, 2.4, 0.9, 0.5);
+    R.add(lathe([[0, 0], [0.4, 0], [0.45, 0.4], [0.42, 0.5]], 16), R.mat(0x6a4a2a), -1.8, 0, 1.0); R.collideC(-1.8, 1.0, 0.5);
+    roomFig(R, 2.0, 1.0, Math.PI, {robe:0x9a2a5a, trim:0xf4f1ea, hat:'hanim'}, 'Dokumacı Hóng Yù', ['Bir kozadan bin metreden uzun tek bir iplik çıkar; hiç koparmadan sararız.', 'Altın simli nakış için iğne iplikten ince olmalı.']);
+  });
+  shopRoom('hali', 142, 'Halı ve Kilim Atölyesi', (R, r) => {
+    const frame = R.mat(0x4a2e1c);
+    [-2.4, 2.4].forEach((x, k) => { [-1.4, 1.4].forEach(dx => R.box(0.14, 3.4, 0.14, frame, x + dx, 1.7, -3.6)); R.box(3.1, 0.14, 0.14, frame, x, 3.3, -3.6); R.box(3.1, 0.14, 0.14, frame, x, 0.4, -3.6); const cp = R.add(new THREE.PlaneGeometry(2.6, 2.6), carpetMat(k), x, 1.85, -3.55, false); fixRoom(cp); R.collide(x, -3.6, 1.5, 0.2); });
+    [[0, 1, 0], [-3, 1.5, 1], [3, 1.6, 2]].forEach(([x, z, k]) => { const cp = R.add(new THREE.PlaneGeometry(2.4, 3.2), carpetMat(k), x, 0.015, z, false); cp.rotation.x = -Math.PI / 2; });
+    for (let i = 0; i < 6; i++){ const rl = R.cyl(0.2, 0.2, 2.2, R.mat([0x8c1c1c, 0x1d3a6e, 0xd4b04a][i % 3], {roughness:0.95}), 4.9, 0.2 + Math.floor(i / 3) * 0.38, -1 + (i % 3) * 0.42, 14); rl.rotation.x = Math.PI / 2; }
+    R.collide(4.9, -0.6, 0.3, 1.2);
+    [[0x1d3a8a, -4.4], [0xc8102e, -3.4], [0xd4a020, -2.4]].forEach(([c, x]) => { R.add(lathe([[0, 0], [0.42, 0], [0.45, 0.7], [0.48, 0.75]], 16), R.mat(0x6a4a2a), x, 0, 3.0); R.cyl(0.43, 0.43, 0.02, R.mat(c, {roughness:0.2}), x, 0.68, 3.0, 16); R.collideC(x, 3.0, 0.5); });
+    roomFig(R, 0, -1.6, Math.PI, {robe:0x6a3a1a, trim:0xe8d7a8, hat:'bilgin'}, 'Düğümcü Wú', ['Bir metrekarede yüz bin düğüm var; bir halı bir yıl sürer.']);
+  });
+  shopRoom('yesim', 182, 'Yeşim Oyma Atölyesi', (R, r) => {
+    R.vitrine(-2.5, -3.2, 0, [0x3fa070, 0x2f8a5a, 0x7ac8a0, 0x1f6a4a]); R.vitrine(2.5, -3.2, 0, [0x3fa070, 0xe8f0e0, 0x2f8a5a, 0x5ab08a]);
+    R.table(0, 0.4, {w:2.4, d:1.0});
+    const grind = R.dyn(); grind.position.set(-0.6, 1.05, 0.4); const gw = R.cyl(0.25, 0.25, 0.05, R.mat(0x8a8a80, {metalness:0.5}), 0, 0, 0, 20, grind); gw.rotation.x = Math.PI / 2;
+    R.anim(dt => { grind.rotation.z += dt * 8; });
+    for (let i = 0; i < 6; i++){ const j = R.add(new THREE.IcosahedronGeometry(0.25 + (i % 3) * 0.1, 0), jadeM, -4.4 + (i % 3) * 0.6, 0.25, 2.2 + Math.floor(i / 3) * 0.7); j.rotation.set(i, i * 2, 0); } R.collide(-3.8, 2.5, 1.0, 0.7);
+    const pts = []; for (let i = 0; i <= 24; i++){ const t = i / 24; pts.push(new THREE.Vector3(3.6 + Math.sin(t * 9) * 0.35, 0.9 + t * 1.3, 2.2 + Math.cos(t * 9) * 0.35)); }
+    R.box(1.2, 0.9, 1.2, R.mat(0xeeebe3), 3.6, 0.45, 2.2); R.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 50, 0.1, 8), jadeM, 0, 0, 0); R.collide(3.6, 2.2, 0.6, 0.6);
+    R.box(0.3, 0.3, 0.3, jadeM, 0.6, 0.97, 0.4);
+    roomFig(R, 0.4, 1.5, Math.PI, {robe:0x2f6a4a, trim:0xe8d7a8, hat:'bilgin'}, 'Oymacı Jīn Yù', ['Yeşim "beş erdemin taşıdır": şefkat, doğruluk, bilgelik, cesaret ve dürüstlük.']);
+  });
+  addRoom({id:'yl-fermantasyon', name:'Çay Fermantasyon Evi', door:Object.assign(wpt(-126, 130.4), {ry:Math.PI}), w:11, d:7, h:4.4, floor:'toprak', walls:'ahsap', ceiling:'kiris', lights:2, decor:(R, r) => {
+    R.fireplace(-3.6, -2.8, 0, {w:1.6, rustic:true});
+    R.add(new THREE.SphereGeometry(0.6, 18, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), R.mat(0x2a2a2e, {metalness:0.7, roughness:0.4, side:THREE.DoubleSide}), -3.6, 1.6, -2.6);
+    for (let s = 0; s < 3; s++){ R.box(3.6, 0.05, 0.5, R.mat(0x5a3a22), 2.4, 0.5 + s * 0.7, -3.1); for (let i = 0; i < 9; i++) for (let k = 0; k < 3; k++) R.cyl(0.17, 0.17, 0.05, R.mat(k % 2 ? 0xf2e6c8 : 0x8a5a30, {roughness:0.9}), 0.9 + i * 0.37, 0.55 + s * 0.7 + k * 0.055, -3.1, 14); }
+    R.collide(2.4, -3.1, 1.8, 0.3);
+    [[-1, 1.5], [0.3, 2.2], [1.6, 1.4]].forEach(([x, z]) => { R.cyl(0.55, 0.45, 0.2, R.mat(0xb39554, {roughness:0.9}), x, 0.6, z, 18); R.cyl(0.5, 0.5, 0.05, R.mat(0x5f8f3a), x, 0.68, z, 18); R.box(0.1, 0.5, 0.1, R.mat(0x4a2e1c), x, 0.25, z); R.collideC(x, z, 0.55); });
+    [0, 1, 2].forEach(i => R.crate(4.4, 0.6 + i * 0.75, 0.6, 0));
+    roomFig(R, -1.2, -0.6, Math.PI / 2, {robe:0x3f6a3a, trim:0xe8d7a8, hat:'hanim'}, 'Çay ustası yardımcısı Lán', ['Pu-erh keki ne kadar yıllanırsa o kadar yumuşar; şu raftakiler benden yaşlı!']);
+  }});
+
+  /* ---------- Yùlóng Köyü: gri tuğlalı, kiremit çatılı köylü evleri ---------- */
+  const grayBrick = (() => { const [c, g] = canvas(256, 256); g.fillStyle = '#5e6266'; g.fillRect(0, 0, 256, 256); for (let y = 0; y < 256; y += 16) for (let x = (y / 16 % 2) * 16; x < 288; x += 32){ const v = 120 + rnd() * 40; g.fillStyle = `rgb(${v | 0},${v + 3 | 0},${v + 6 | 0})`; g.fillRect(x - 32 + 1, y + 1, 30, 14); } return new THREE.MeshStandardMaterial({map:ctex(c, 3, 1.2), roughness:0.92}); })();
+  const plasterW = mat(0xe8e0d0, {roughness:0.9});
+  const farmTile = (() => { const m = tileGray.clone(); m.map = tileGray.map.clone(); m.map.needsUpdate = true; m.map.repeat.set(3.6, 2); return m; })();
+  const doorWood = mat(0x6a1a12, {roughness:0.55});
+  const fuTex = (() => { const [c, g] = canvas(128, 128); g.fillStyle = '#c8102e'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#1a0a06'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 92px ' + FONT; g.fillText('福', 64, 70); return ctex(c); })();
+  const coupletTex = text => { const [c, g] = canvas(64, 448); g.fillStyle = '#c8102e'; g.fillRect(0, 0, 64, 448); g.fillStyle = '#f0c040'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 50px ' + FONT; [...text].forEach((ch, i) => g.fillText(ch, 32, 34 + i * 63)); return ctex(c); };
+  const COUPLETS = [['天增歲月人增壽', '春滿乾坤福滿門'], ['一帆風順年年好', '萬事如意步步高'], ['五穀豐登家家樂', '六畜興旺戶戶歡']].map(([a, b]) => [new THREE.MeshStandardMaterial({map:coupletTex(a), roughness:0.7}), new THREE.MeshStandardMaterial({map:coupletTex(b), roughness:0.7})]);
+  const VW = 10, VD = 6.2, VH = 3.4;
+  function farmHouse(i, lx, lz, rot, room){
+    const g = new THREE.Group(); g.position.set(lx, 0, lz); g.rotation.y = rot; G.add(g);
+    add(new THREE.BoxGeometry(VW + 0.8, 0.35, VD + 0.8), stoneG, 0, 0.17, 0, g);
+    add(new THREE.BoxGeometry(VW, VH, VD), grayBrick, 0, 0.35 + VH / 2, 0, g);
+    add(new THREE.BoxGeometry(VW - 0.6, VH - 0.6, 0.06), plasterW, 0, 0.35 + VH / 2, VD / 2 + 0.03, g);
+    // kalkan duvarları ve kiremitli beşik çatı, uçları kalkık mahya
+    const top = 0.35 + VH, RH = 2.0, ov = 0.7, th = Math.atan2(RH, VD / 2), sl = Math.hypot(VD / 2 + ov, RH + ov * Math.tan(th));
+    const tri = new THREE.Shape(); tri.moveTo(-VD / 2, 0); tri.lineTo(VD / 2, 0); tri.lineTo(0, RH); tri.closePath();
+    [-1, 1].forEach(sd => { const tg = new THREE.ExtrudeGeometry(tri, {depth:0.3, bevelEnabled:false}); tg.rotateY(Math.PI / 2); add(tg, grayBrick, sd * VW / 2 - (sd > 0 ? 0.3 : 0), top, 0, g); });
+    [-1, 1].forEach(sd => { const p = add(new THREE.BoxGeometry(VW + 1.2, 0.16, sl), farmTile, 0, top + RH / 2 - ov * Math.tan(th) / 2 + 0.08, sd * (VD / 2 + ov) / 2, g); p.rotation.x = sd * th; });
+    add(new THREE.BoxGeometry(VW + 1.0, 0.35, 0.4), tileGray, 0, top + RH + 0.1, 0, g);
+    [-1, 1].forEach(sd => { const e = add(new THREE.ConeGeometry(0.2, 0.9, 6), tileGray, sd * (VW / 2 + 0.6), top + RH + 0.35, 0, g); e.rotation.z = sd * 0.9; });
+    // kapı, çift dize, "福", kafesli pencereler, fenerler
+    add(new THREE.BoxGeometry(1.9, 2.6, 0.12), mat(0x3a1a0e), 0, 0.35 + 1.3, VD / 2 + 0.07, g);
+    [-1, 1].forEach(sd => { add(new THREE.PlaneGeometry(0.78, 2.3), doorWood, sd * 0.4, 0.35 + 1.2, VD / 2 + 0.14, g, false); add(new THREE.SphereGeometry(0.05, 8, 6), gold, sd * 0.12, 0.35 + 1.25, VD / 2 + 0.17, g); });
+    const fu = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshStandardMaterial({map:fuTex, roughness:0.7})); fu.position.set(0.4, 0.35 + 1.75, VD / 2 + 0.15); fu.rotation.z = Math.PI / 4; fu.userData.keep = true; g.add(fu);
+    const [ca, cb] = COUPLETS[i % COUPLETS.length];
+    [[ca, -1.25], [cb, 1.25]].forEach(([m, x]) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 2.3), m); p.position.set(x, 0.35 + 1.35, VD / 2 + 0.08); p.userData.keep = true; g.add(p); });
+    [-1, 1].forEach(sd => add(new THREE.PlaneGeometry(1.3, 1.0), paperMat, sd * 3.0, 0.35 + 1.75, VD / 2 + 0.09, g, false));
+    [-1, 1].forEach(sd => add(new THREE.BoxGeometry(1.5, 0.12, 0.12), woodD, sd * 3.0, 0.35 + 2.32, VD / 2 + 0.1, g));
+    const [ax, az] = [Math.cos(rot), -Math.sin(rot)], [bx, bz] = [Math.sin(rot), Math.cos(rot)];
+    [-1.3, 1.3].forEach(dx => lanterns.push([lx + dx * ax + (VD / 2 + 0.6) * bx, 2.75, lz + dx * az + (VD / 2 + 0.6) * bz, 0.75]));
+    // kapı yanında kuruyan kırmızı biber ve mısır dizileri, su küpü, odun yığını
+    [-4.2, 4.2].forEach((x, k) => { for (let j = 0; j < 9; j++) add(new THREE.ConeGeometry(0.05, 0.22, 5), mat(k ? 0xe8b82a : 0xc8102e, {roughness:0.6}), x + Math.sin(j * 2.3) * 0.08, 0.35 + 2.6 - j * 0.17, VD / 2 + 0.12, g).rotation.x = Math.PI; });
+    add(lathe([[0, 0], [0.32, 0], [0.42, 0.35], [0.36, 0.7], [0.3, 0.75]], 14), mat(0x6a4a2a, {roughness:0.6}), 3.9, 0, VD / 2 + 1.2, g);
+    for (let k = 0; k < 8; k++){ const w = add(new THREE.CylinderGeometry(0.09, 0.09, 1.1, 6), mat(0x7a5a3a), -3.8 + (k % 4) * 0.2, 0.45 + Math.floor(k / 4) * 0.18, -VD / 2 - 0.5, g); w.rotation.x = Math.PI / 2; }
+    cBox(lx, lz, VW / 2 + 0.4, VD / 2 + 0.4, rot);
+    const wpx = lx + (VD / 2 + 1.5) * bx, wpz = lz + (VD / 2 + 1.5) * bz;
+    cCircle(lx + 3.9 * ax + (VD / 2 + 1.2) * bx, lz + 3.9 * az + (VD / 2 + 1.2) * bz, 0.45);
+    if (room) addRoom(Object.assign({id:'yl-koy' + i, door:Object.assign(wpt(wpx, wpz), {ry:rot}), w:8, d:5.6, h:3.6, floor:'toprak', walls:'tugla', ceiling:'kiris', lights:1}, room));
+  }
+  // köy evinin içi: ısıtmalı tuğla yatak (kang), alçak masa, ocak, ata sunağı, asılı mısır ve biberler
+  const homeDecor = (who, lines, opts) => (R, r) => {
+    const brick = R.mat(0x8a6a58, {roughness:0.95});
+    R.box(r.w - 0.4, 0.6, 1.9, brick, 0, 0.3, -r.d / 2 + 0.95); R.collide(0, -r.d / 2 + 0.95, r.w / 2 - 0.2, 0.95);
+    R.box(2.4, 0.12, 1.5, R.mat(0xc8102e, {roughness:0.85}), -1.6, 0.66, -r.d / 2 + 0.95); R.box(0.6, 0.18, 0.4, R.mat(0xe8b830, {roughness:0.8}), -2.4, 0.78, -r.d / 2 + 0.5);
+    R.box(1.0, 0.3, 0.7, R.mat(0x6a1a12, {roughness:0.5}), 1.4, 0.75, -r.d / 2 + 1.0);
+    R.add(lathe([[0, 0], [0.1, 0], [0.13, 0.08], [0.1, 0.14], [0.03, 0.17], [0, 0.17]], 12), R.mat(0x7a3b22, {roughness:0.3}), 1.4, 0.9, -r.d / 2 + 1.0);
+    [-0.25, 0.25].forEach(dx => R.cyl(0.035, 0.03, 0.05, R.mat(0xf4f1ea), 1.4 + dx, 0.92, -r.d / 2 + 1.15, 10));
+    // ocak ve wok, kapının yanında; içinde ateş
+    R.box(1.4, 0.8, 1.0, brick, r.w / 2 - 0.9, 0.4, 0.6); R.collide(r.w / 2 - 0.9, 0.6, 0.7, 0.5);
+    R.add(new THREE.SphereGeometry(0.42, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), R.mat(0x2a2a2e, {metalness:0.7, roughness:0.4, side:THREE.DoubleSide}), r.w / 2 - 0.9, 0.85, 0.6);
+    R.add(new THREE.PlaneGeometry(0.4, 0.25), R.fireMat, r.w / 2 - 0.9, 0.25, 1.11, false);
+    R.light(r.w / 2 - 0.9, 0.4, 1.3, 0xff8a3a, 2.5, 5);
+    R.cyl(0.12, 0.12, 2.8, brick, r.w / 2 - 0.5, 2.2, 0.3, 8);
+    // ata sunağı: kırmızı masa, tütsü, mumlar, rulo resim
+    R.table(-r.w / 2 + 0.5, 0.6, {w:1.2, d:0.5, h:0.95, ry:Math.PI / 2, top:R.mat(0x6a1a12), leg:R.mat(0x3a1008)});
+    R.candles(-r.w / 2 + 0.5, 0.95, 0.2); R.candles(-r.w / 2 + 0.5, 0.95, 1.0);
+    R.painting(-r.w / 2 + 0.05, 2.1, 0.6, Math.PI / 2, 0.8, 1.2, 'manzara', 7);
+    scroll(R, opts.wall || '家和萬事興', -r.w / 2 + 0.06, 2.0, -0.6, Math.PI / 2, 0.35, 1.7);
+    scroll(R, '福', 0, 2.4, -r.d / 2 + 0.06, 0, 0.6, 0.6);
+    // tavandan sarkan mısır ve biber demetleri, sepetler, tabureler, su küpü
+    [[-2.6, 0.8, 0xe8b82a], [2.0, -0.6, 0xc8102e], [0.2, 1.4, 0xe8b82a]].forEach(([x, z, c]) => { R.cyl(0.008, 0.008, 0.6, R.iron, x, r.h - 0.3, z, 4); for (let j = 0; j < 7; j++) R.add(new THREE.ConeGeometry(c === 0xc8102e ? 0.04 : 0.07, c === 0xc8102e ? 0.18 : 0.28, 6), R.mat(c, {roughness:0.6}), x + Math.sin(j * 2) * 0.08, r.h - 0.7 - j * 0.12, z + Math.cos(j * 2) * 0.08).rotation.x = Math.PI; });
+    [[-0.6, 1.2], [0.4, 1.6]].forEach(([x, z]) => { R.box(0.4, 0.42, 0.4, R.wood, x, 0.21, z); R.collide(x, z, 0.22, 0.22); });
+    R.add(lathe([[0, 0], [0.3, 0], [0.38, 0.3], [0.32, 0.62], [0.28, 0.66]], 14), R.mat(0x5a3a22, {roughness:0.6}), r.w / 2 - 0.5, 0, -0.9); R.collideC(r.w / 2 - 0.5, -0.9, 0.4);
+    R.add(lathe([[0, 0], [0.3, 0], [0.36, 0.25], [0.38, 0.32]], 12), R.mat(0xb39554, {roughness:0.9, side:THREE.DoubleSide}), -1.8, 0, 1.8);
+    if (who) roomFig(R, opts.x ?? 0.6, opts.z ?? 0.3, Math.PI, opts.fig, who, lines);
+  };
+  const VILLAGE = [
+    [-108, 192, 0, 'Çiftçi Wáng\'in evi', 'Çiftçi Wáng', ['Pirinç, darı, biraz da sebze… Toprak iyi bakarsan seni de besler.', 'Kışın kang\'ın altına ateş yakarız; bütün aile sıcak tuğlanın üstünde uyur.'], {robe:0x3f5f8f, trim:0xf4f1ea, hat:'hasir', worker:true}],
+    [-88, 192, 0, 'Dokumacı Lǐ\'nin evi', 'Dokumacı Lǐ Hóng', ['Kızım saraydaki ipek evinde çalışıyor; ben de evde mavi-beyaz batik boyarım.'], {robe:0x9a2a5a, trim:0xf4f1ea, hat:'mendil', scarf:0x2a4a8a, worker:true}],
+    [-40, 192, 0, 'Balıkçı Chén\'in evi', 'Balıkçı Chén', ['Sabah ağları yüzen pazara taşırım. Koiler sarayın, sazanlar benim!'], {robe:0x2a4a6a, trim:0xc8102e, hat:'hasir', worker:true}],
+    [-22, 192, 0, 'Yaşlı Zhōu\'nun evi', 'Yaşlı Zhōu', ['Seksen yıldır bu köydeyim. Ejderha her bahar adanın üstünden geçer; geçtiği yıl hasat bol olur.', 'Kapıdaki kırmızı yazılar yeni yılın dilekleridir: uzun ömür, bolluk, mutluluk.'], {robe:0x5a4a3a, trim:0xe8d7a8, hat:'bilgin'}],
+    [-108, 220, Math.PI, 'Demirci Liú\'nun evi', 'Demirci Liú', ['Sabanın demirini, orağı, kazmayı ben döverim. Sed\'in muhafızlarının kılıçlarını da!'], {robe:0x3a3a3a, trim:0x8a6a48, hat:'mendil', scarf:0x1a1a1a, worker:true}],
+    [-88, 220, Math.PI, 'Çay toplayıcı Méi\'nin evi', 'Méi Lín', ['Teraslardan inince önce sepeti boşaltırım, sonra çocukları doyururum.'], {robe:0x6a4a6a, trim:0xf4f1ea, hat:'mendil', scarf:0xb3121e, worker:true}],
+    [-40, 220, Math.PI, 'Öğretmen Sūn\'un evi', 'Öğretmen Sūn', ['Çocuklara Konfüçyüs\'ü okuturum: "Öğrenip de tekrar etmek, ne büyük zevk!"'], {robe:0x2f3a5a, trim:0xe8d7a8, hat:'bilgin'}],
+    [-22, 220, Math.PI, 'Değirmenci Gāo\'nun evi', 'Değirmenci Gāo', ['Meydandaki taş değirmen dedemden kaldı; eşek döndürür, ben un çuvallarım.'], {robe:0x8a7a5a, trim:0xf4f1ea, hat:'hasir', worker:true}],
+    [-122, 206, Math.PI / 2, 'Ebe Hú\'nun evi', 'Ebe Hú', ['Bu köyde doğan her bebeği ben karşıladım. Şifalı otlarım rafta, kuruyor.'], {robe:0x5a7a5a, trim:0xf4f1ea, hat:'hanim'}],
+    [-64, 250, Math.PI, 'Muhtar Lín\'in evi', 'Muhtar Lín', ['Yùlóng Köyü\'ne hoş geldin, elçi! Bizim köy sarayın pirincini, çayını ve ipeğini yetiştirir.', 'Bayram gecesi meydandaki dev ağacın altında fener şenliği yaparız.'], {robe:0x7a1c1c, trim:0xd4af37, hat:'resmi'}],
+  ];
+  VILLAGE.forEach(([x, z, rot, name, who, lines, fig], i) => farmHouse(i, x, z, rot, {name, decor:homeDecor(who, lines, {fig, wall:['家和萬事興', '勤儉持家', '耕讀傳家'][i % 3]})}));
+  {
+    // köy yolu, meydan, kuyu, dev ağaç, taş değirmen, kurutma sırıkları, saman yığınları, köy kapısı
+    road([[0, 200], [0, 206], [-128, 206]], 5); road([[-64, 160], [-64, 244]], 3.5);
+    const sq = add(new THREE.CircleGeometry(13, 40), paving, -64, 0.03, 206, G, false); sq.rotation.x = -Math.PI / 2;
+    // kuyu
+    add(new THREE.CylinderGeometry(0.95, 1.05, 0.9, 18, 1, true), stoneG, -57, 0.45, 210); add(new THREE.TorusGeometry(1.0, 0.12, 8, 24), stoneG, -57, 0.9, 210).rotation.x = Math.PI / 2;
+    add(new THREE.CircleGeometry(0.9, 18), mat(0x0e1a1e, {roughness:0.1}), -57, 0.6, 210).rotation.x = -Math.PI / 2;
+    [-1, 1].forEach(sd => add(new THREE.BoxGeometry(0.15, 2.4, 0.15), woodD, -57 + sd * 1.1, 1.2, 210)); add(new THREE.CylinderGeometry(0.12, 0.12, 2.4, 8), woodL, -57, 2.0, 210).rotation.z = Math.PI / 2;
+    { const kg = new THREE.Group(); kg.position.set(-57, 2.4, 210); G.add(kg); roof(kg, {type:'rect', W:3.0, D:1.6}, 0.8, tileGray, 0.2, {lift:0.3, seg:4, rings:4}); }
+    add(new THREE.CylinderGeometry(0.2, 0.16, 0.3, 10), woodL, -57.6, 0.95, 210); cCircle(-57, 210, 1.2);
+    // köyün yaşlı ağacı: kalın gövde, geniş tepe, dallarda kırmızı dilek kurdeleleri
+    const tx = -70, tz = 201;
+    add(new THREE.CylinderGeometry(0.9, 1.5, 6, 12), mat(0x4a3424, {roughness:0.95}), tx, 3, tz);
+    for (let k = 0; k < 5; k++){ const a = k / 5 * Math.PI * 2, b = add(new THREE.CylinderGeometry(0.25, 0.5, 4, 8), mat(0x4a3424, {roughness:0.95}), tx + Math.sin(a) * 1.5, 6.5, tz + Math.cos(a) * 1.5); b.rotation.set(Math.cos(a) * 0.6, 0, -Math.sin(a) * 0.6); }
+    for (let k = 0; k < 14; k++){ const a = rnd() * 6.3, rr = 2 + rnd() * 4, c2 = add(new THREE.IcosahedronGeometry(2 + rnd() * 1.4, 1), mat(0x3f6a2e, {roughness:0.9, flatShading:true}), tx + Math.sin(a) * rr, 8 + rnd() * 2.5, tz + Math.cos(a) * rr); c2.scale.y = 0.65; }
+    for (let k = 0; k < 18; k++){ const a = rnd() * 6.3, rr = 2.5 + rnd() * 3; add(new THREE.BoxGeometry(0.06, 0.9, 0.02), mat(0xc8102e), tx + Math.sin(a) * rr, 6.2 + rnd() * 1.5, tz + Math.cos(a) * rr); }
+    add(new THREE.TorusGeometry(1.6, 0.18, 6, 24), stoneG, tx, 0.2, tz).rotation.x = Math.PI / 2; cCircle(tx, tz, 1.7);
+    // taş değirmen
+    add(new THREE.CylinderGeometry(1.3, 1.4, 0.6, 20), stoneG, -55, 0.3, 199); add(new THREE.CylinderGeometry(0.75, 0.75, 0.5, 18), stoneD, -55, 0.85, 199); add(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6), woodD, -55, 1.0, 199).rotation.z = Math.PI / 2; cCircle(-55, 199, 1.4);
+    // kurutma sırıkları: mısır koçanları ve biber dizileri
+    [[-80, 238], [-48, 238], [-96, 176], [-32, 176]].forEach(([x, z], k) => {
+      [-1, 1].forEach(sd => { add(new THREE.CylinderGeometry(0.07, 0.08, 2.6, 6), woodD, x + sd * 1.6, 1.3, z); cCircle(x + sd * 1.6, z, 0.15); });
+      add(new THREE.CylinderGeometry(0.05, 0.05, 3.4, 6), woodL, x, 2.5, z).rotation.z = Math.PI / 2;
+      for (let j = 0; j < 12; j++) add(new THREE.CylinderGeometry(0.07, 0.05, 0.38, 6), mat(k % 2 ? 0xc8102e : 0xe8b82a, {roughness:0.6}), x - 1.4 + j * 0.25, 2.15 - (j % 2) * 0.1, z);
+    });
+    [[-46, 248], [-82, 166], [-118, 236]].forEach(([x, z]) => { add(new THREE.SphereGeometry(1.3, 12, 8), mat(0xc9a54e, {roughness:1, flatShading:true}), x, 0.6, z).scale.y = 0.8; add(new THREE.ConeGeometry(1.0, 1.0, 10), mat(0xb8944a, {roughness:1}), x, 1.7, z); cCircle(x, z, 1.3); });
+    // köy kapısı (doğu girişinde)
+    { const kg = new THREE.Group(); kg.position.set(-14, 0, 206); kg.rotation.y = Math.PI / 2; G.add(kg);
+      [-3, 3].forEach(dx => { add(new THREE.CylinderGeometry(0.28, 0.3, 5.2, 10), woodD, dx, 2.6, 0, kg); add(new THREE.BoxGeometry(0.9, 0.6, 0.9), stoneG, dx, 0.3, 0, kg); });
+      add(new THREE.BoxGeometry(7.2, 0.35, 0.4), red, 0, 4.6, 0, kg); roof(kg, {type:'rect', W:8.4, D:1.8}, 1.0, tileGray, 5.0, {lift:0.5, seg:6, rings:4});
+      const p = plaque('玉龍村', 2.4, 0.8, '#3a2010'); p.position.set(0, 4.0, 0.22); kg.add(p); const q = plaque('玉龍村', 2.4, 0.8, '#3a2010'); q.position.set(0, 4.0, -0.22); q.rotation.y = Math.PI; kg.add(q);
+      cCircle(-14, 203, 0.4); cCircle(-14, 209, 0.4); }
+    // köylüler: tarla dönüşü, tavuk besleyen kadın, oynayan çocuklar
+    person(-60, 214, Math.PI * 0.3, 'Köylü Zhāng', {robe:0x3f5f8f, trim:0xf4f1ea, hat:'hasir', worker:true, basket:true}, () => say('Köylü Zhāng', ['Tarladan döndüm, sepet dolu turp! Akşam muhtarın evinde herkes toplanır.']));
+    person(-76, 212, -Math.PI * 0.5, 'Köylü kadın Fāng', {robe:0x6a4a6a, trim:0xf4f1ea, hat:'mendil', scarf:0xb3121e, worker:true}, () => say('Köylü kadın Fāng', ['Tavuklar sabah yumurtlar, ben de pazara götürürüm. Bir de taze çörek yaptım, ister misin?']));
+    const kidOpts = {robe:0xc8102e, trim:0xe8b830, hat:'mendil', scarf:0x151010, worker:true};
+    [[-52, 202], [-50, 205]].forEach(([x, z], k) => { const g = person(x, z, k * 2, 'Köy çocuğu', kidOpts, () => say('Köy çocuğu', ['Ejderhayı gördün mü? Dün inciyi kovalıyordu, neredeyse ağacın tepesine konacaktı!'])); g.scale.setScalar(0.65); });
+    // tavuklar
+    const hens = [];
+    for (let k = 0; k < 7; k++){ const g = new THREE.Group(); g.position.set(-80 + (k % 4) * 1.4, 0, 211 + Math.floor(k / 4) * 1.2); g.userData.dyn = true; G.add(g);
+      add(new THREE.SphereGeometry(0.2, 10, 8), mat(k % 3 ? 0xf4f0e6 : 0x9a5a2a, {roughness:0.9}), 0, 0.28, 0, g).scale.set(0.8, 0.85, 1.1);
+      add(new THREE.SphereGeometry(0.1, 8, 6), mat(k % 3 ? 0xf4f0e6 : 0x9a5a2a), 0, 0.46, 0.16, g); add(new THREE.ConeGeometry(0.03, 0.08, 4), mat(0xe8b82a), 0, 0.45, 0.27, g).rotation.x = Math.PI / 2; add(new THREE.BoxGeometry(0.02, 0.07, 0.08), mat(0xc8102e), 0, 0.55, 0.16, g);
+      [-1, 1].forEach(sd => add(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 4), mat(0xe8b82a), sd * 0.06, 0.08, 0, g)); hens.push({g, ph:k * 1.3, x:g.position.x, z:g.position.z}); }
+    updaters.push((dt, t, hero) => { if (Math.abs(hero.pos.x - CX + 70) + Math.abs(hero.pos.z - CZ - 210) > 90) return; hens.forEach(h => { const a = t * 0.3 + h.ph; h.g.position.x = h.x + Math.sin(a) * 0.8; h.g.position.z = h.z + Math.cos(a * 0.7) * 0.6; h.g.rotation.y = a + Math.PI / 2; h.g.rotation.x = Math.max(0, Math.sin(t * 3 + h.ph)) * 0.5; }); });
+    // sebze tarlaları: toprak sıraları, lahana ve pırasa
+    const soil = mat(0x6a4a30, {roughness:1}), cab = mat(0x7ab04a, {roughness:0.8}), leek = mat(0x4a8a3a, {roughness:0.8});
+    for (let p = 0; p < 2; p++){ const px = -146 + p * 11, pz = 182;
+      const s0 = add(new THREE.PlaneGeometry(9, 36), soil, px, 0.025, pz, G, false); s0.rotation.x = -Math.PI / 2;
+      for (let row = 0; row < 6; row++){ add(new THREE.BoxGeometry(0.6, 0.2, 35), mat(0x5a3a24, {roughness:1}), px - 3.6 + row * 1.45, 0.1, pz);
+        for (let k = 0; k < 18; k++){ const y = 0.28, z = pz - 17 + k * 2; if (p === 0) add(new THREE.SphereGeometry(0.32, 8, 6), cab, px - 3.6 + row * 1.45, y, z).scale.y = 0.75; else add(new THREE.ConeGeometry(0.08, 0.7, 5), leek, px - 3.6 + row * 1.45, 0.5, z); } }
+    }
+    person(-140, 176, Math.PI / 2, 'Çiftçi Lǎo Wáng', {robe:0x3f5f8f, trim:0xf4f1ea, hat:'hasir', worker:true}, () => say('Çiftçi Lǎo Wáng', ['Lahanaları kış için tuzlarız, pırasayı da köftede kullanırız. Toprak bereketli!']));
+  }
+
   /* ================= AĞAÇLAR: çam, erik çiçeği, söğüt ================= */
   function willow(lx, lz){ trees.willow.push([lx, lz]); cCircle(lx, lz, 0.5); }
   function mulberry(lx, lz){ trees.bloom.push([lx, lz, 0x5f8f3a]); cCircle(lx, lz, 0.45); }
   {
     const busy = (x, z) =>
+      (x > -156 && x < -8 && z > 156 && z < 258) ||
       (x > -66 && x < 66 && z > -136 && z < 52) || (Math.abs(x) < 16 && z > 40 && z < 206) || (x > 45 && x < 140 && z > 40 && z < 200) ||
       inPond(x, z, -8) || Math.hypot(x - TEA.x, z - TEA.z) < TEA.R0 + 8 || Math.hypot(x - BAM.x, z - BAM.z) < BAM.r + 4 ||
       Math.hypot(x - DT.x, z - DT.z) < 22 || (x > 25 && x < 125 && z > -195 && z < -100) || Math.abs(x - ridgeX(z)) < 14 ||
-      Math.hypot(x - HARBOR_L[0], z - HARBOR_L[1]) < 40 || (x > -140 && x < -110 && z > 120 && z < 150);
+      Math.hypot(x - HARBOR_L[0], z - HARBOR_L[1]) < 40 || (Math.abs(x) < 26 && z > -168 && z < -130) || (x > -140 && x < -110 && z > 120 && z < 150);
     for (let k = 0; k < 2400 && trees.pine.length + trees.bloom.length < 330; k++){
       const x = (rnd() - 0.5) * 600, z = (rnd() - 0.5) * 600;
       if (inland(x, z) < 26 || busy(x, z)) continue;
@@ -1229,7 +1783,41 @@ export function buildChina(world, C, hooks){
     person(-121, 128, Math.PI / 2, CRAFTS.cay.master, {robe:0x3f6a3a, trim:0xe8d7a8, hat:'hanim'}, () => craft('cay'));
     const tp = person(TEA.x + 1.6, TEA.z - 1.6, Math.PI * 0.75, 'Çay ustası Bái Yún (seremoni)', {robe:0x6a8a5a, trim:0xf4f1ea, hat:'hanim'}, () => teaCeremony());
     tp.scale.setScalar(0.98);
-    [[TEA.x - 20, TEA.z + 8, 1.1], [TEA.x + 6, TEA.z + 26, 2.1]].forEach(([x, z, ry]) => person(x, z, ry, 'Çay toplayıcı', {robe:0x4a6a8a, trim:0xf4f1ea, hat:'hasir'}, () => say('Çay toplayıcı', 'Sabah çiyi kurumadan toplarız: bir tomurcuk, iki yaprak. Fermantasyon evindeki usta gerisini bilir.')));
+    const PICK_LINES = ['Sabah çiyi kurumadan toplarız: bir tomurcuk, iki yaprak. Fermantasyon evindeki usta gerisini bilir.', 'Sepet dolunca tepeden iner, yaprakları gölgede serip soldururuz.', 'Annem de bu teraslarda çalıştı, onun annesi de. Toprak sabırlıdır, biz de öyle.', 'Çay şarkısını duydun mu? Yaprak toplarken söyleriz, eller ritme uyar.'];
+    const pickers = [];
+    [[37, 0.4], [37, 2.0], [37, 3.6], [31, 1.2], [31, 4.6], [25, 0.2], [25, 2.8], [19, 1.6], [37, 5.3], [31, 2.9]].forEach(([rr, a], i) => {
+      const x = TEA.x + Math.sin(a) * rr, z = TEA.z + Math.cos(a) * rr;
+      if (Math.abs(z - TEA.z) < 4 && x > TEA.x) return;
+      const ry = a + Math.PI / 2 * (i % 2 ? 1 : -1);
+      const g = person(x, z, ry, 'Çay toplayıcı', {robe:[0x3f5f8f, 0x5a7a9a, 0x6a4a6a, 0x3f6a5a][i % 4], trim:0xf4f1ea, hat:i % 3 ? 'hasir' : 'mendil', scarf:[0x2a4a8a, 0xb3121e, 0x2f6a5a][i % 3], worker:true, basket:true}, () => say('Çay toplayıcı', PICK_LINES[i % PICK_LINES.length]), 2.2);
+      g.rotation.order = 'YXZ'; pickers.push({g, ph:i * 1.7});
+    });
+    // yaprak toplarken öne eğilip doğrulurlar
+    updaters.push((dt, t) => pickers.forEach(p => { p.g.rotation.x = 0.2 + Math.max(0, Math.sin(t * 0.9 + p.ph)) * 0.35; }));
+    // dolu sepetle tepeden fermantasyon evine inip çıkan bir işçi
+    { const g = figure({robe:0x3f5f8f, trim:0xf4f1ea, hat:'hasir', worker:true, basket:true}); g.userData.dyn = true; G.add(g);
+      const A = [TEA.x + TEA.R0 + 4, TEA.z + 0.6], B = [-124, 125];
+      updaters.push((dt, t) => { const u = (Math.sin(t * 0.12) + 1) / 2, x = A[0] + (B[0] - A[0]) * u, z = A[1] + (B[1] - A[1]) * u, dir = Math.cos(t * 0.12) > 0 ? 1 : -1;
+        g.position.set(x, gy(x, z) + Math.abs(Math.sin(t * 5)) * 0.03, z); g.rotation.y = Math.atan2((B[0] - A[0]) * dir, (B[1] - A[1]) * dir); }); }
+    // Prenses Lìhuá: lotus göletinin kıyısında, su köşkünün önünde yelpazesiyle
+    { const LX = -97, LZ = 96.5, P2 = makeLihua(); P2.g.position.set(LX, 0, LZ); P2.g.rotation.y = Math.PI; P2.g.userData.dyn = true; G.add(P2.g); cCircle(LX, LZ, 0.5);
+      updaters.push((dt, t, hero) => {
+        const dx = hero.pos.x - CX - LX, dz = hero.pos.z - CZ - LZ; if (Math.abs(dx) + Math.abs(dz) > 60) return;
+        world.turnToward(P2.g, Math.hypot(dx, dz) < 6 ? Math.atan2(dx, dz) : Math.PI + Math.sin(t * 0.2) * 0.4, Math.min(1, dt * 2.5));
+        P2.fan.rotation.y = -0.3 + Math.sin(t * 1.6) * 0.25; P2.fan.rotation.z = Math.sin(t * 1.6) * 0.08;
+        P2.head.rotation.z = Math.sin(t * 0.7) * 0.04;
+      });
+      act(LX, LZ, 'Konuş: Prenses Lìhuá', async () => {
+        const name = 'Prenses Lìhuá', s = st();
+        if (!s.metLihua){
+          s.metLihua = true;
+          await say(name, ['Ejderhanın sırtında denizi aşan elçi sen misin? Ben Lìhuá; adım "güzel çiçek" demek.', 'Yüzümdeki beyaz pudra, şakaklarımdaki allık ve alnımdaki erik çiçeği saray geleneğidir; dudaklarımın yalnızca ortası boyanır, kiraz tanesi gibi.', 'Lumière\'de sarı saçlı bir prenses varmış, Aurélie… Ona bu yelpazeyi götürür müsün bir gün? Erik çiçeği kışın ilk açan çiçektir: dostluğun simgesi.']);
+          hooks.save(); return;
+        }
+        const c = await ui.dialog([{name, text:'Yelpaze de konuşur, bilir misin? Açık yelpaze "seni dinliyorum", yavaşça kapanan "yarın gel" demektir.', choices:['Yelpaze dansını izle', 'Bir şiir oku', 'Hoşça kalın']}]);
+        if (c === 0){ if (!ready('yelpaze', 45, name + ': Biraz dinleneyim, sonra yine dans ederim.')) return; sfx('chime'); await say(name, 'Yelpaze açılır, kapanır; ipek kollar su gibi akar… Göletin üstünde ay doğarken dans etmek ne güzel.'); gain({culture:3, why:'Yelpaze dansı'}); }
+        else if (c === 1) await say(name, ['"Yatağımın önünde ay ışığı, yerde kırağı sandım onu.', 'Başımı kaldırıp aya baktım, başımı eğip yurdumu andım." — Lǐ Bái']);
+      }, 2.6); }
     person(64, -143, Math.PI * 0.8, 'Rahip Huìnéng', {robe:0xd88a1a, trim:0x8a2a1a, hat:'kesis', sash:0x8a2a1a}, () => say('Rahip Huìnéng', ['Bulut Çanı Tapınağı\'na hoş geldin. Dokuz kat, göğün dokuz katmanıdır; saçaklardaki çanlar rüzgârla dua eder.', 'Çanı çal, tütsü yak, sonra Yin-Yang bahçesinde otur: denge, dışarıda değil içeride kurulur.']));
     act(46 + 3.4, -146, 'Bulut Çanı\'nı çal', () => bellRing(), 2.6);
     act(78, -143.6, 'Tütsü yak', () => incense(), 2.4);
@@ -1267,7 +1855,7 @@ export function buildChina(world, C, hooks){
   CHINA_PLACES.forEach(p => markers.push({id:'yl-' + p.id, color:'#d4af37', label:p.name, x:p.x, z:p.z, minor:true, show:() => near && !!hooks.getS().started && !st().found.includes(p.id) && near2.includes(p.id)}));
   const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = new THREE.Vector3(1, 1, 1), tmpP = new THREE.Vector3();
   function update(dt, t, hero){
-    root.visible = hero.zone !== 'ic';
+    root.visible = hero.zone !== 'ic' && hero.zone !== 'oda';
     if (!root.visible) return;
     const W = world.W, px = hero.pos.x - CX, pz = hero.pos.z - CZ, dist = Math.hypot(px, pz);
     near = dist < 420;
@@ -1276,6 +1864,7 @@ export function buildChina(world, C, hooks){
     const nl = W.night;
     lanternMat.color.setRGB(0.45 + nl * 2.2, 0.06 + nl * 0.55, 0.04 + nl * 0.12);
     paperMat.emissiveIntensity = nl * 1.4;
+    lung.update(dt, t, hero);
     if (dist > 650) return;
     // keşif
     const S = hooks.getS();
@@ -1312,11 +1901,14 @@ export function buildChina(world, C, hooks){
         p.phase += dt * 5; p.sit = Math.max(0, p.sit - dt * 2);
       } else {
         p.wait -= dt; p.sit = Math.min(1, p.sit + dt * 1.2);
-        if (p.wait <= 0 && !(p.feed > 0)){ const a = rnd() * 6.3, r = rnd() * (CLEAR.r - 3); p.tx = CLEAR.x + Math.sin(a) * r; p.tz = CLEAR.z + Math.cos(a) * r; p.wait = 6 + rnd() * 10; }
+        if (p.wait <= 0 && !(p.feed > 0)){
+          if (p.follow != null){ const m = pandas[p.follow], a = rnd() * 6.3; p.tx = m.x + Math.sin(a) * 1.6; p.tz = m.z + Math.cos(a) * 1.6; p.wait = 1.5 + rnd() * 2; }
+          else { const a = rnd() * 6.3, r = rnd() * (CLEAR.r - 3); p.tx = CLEAR.x + Math.sin(a) * r; p.tz = CLEAR.z + Math.cos(a) * r; p.wait = 6 + rnd() * 10; }
+        }
       }
       p.g.position.set(p.x, 0, p.z); p.g.rotation.y = p.yaw;
       p.legs.forEach((l, i) => { l.rotation.x = p.sit > 0.5 ? (i < 2 ? -1.2 : 0) : Math.sin(p.phase + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.4 * (1 - p.sit); });
-      p.body.rotation.x = -p.sit * 0.75; p.body.position.y = 0.62 - p.sit * 0.12;
+      p.body.rotation.x = -p.sit * 0.75 + (p.follow != null ? Math.sin(t * 2 + p.phase) * 0.05 : 0); p.body.position.y = 0.62 - p.sit * 0.12;
       p.head.rotation.x = p.sit * 0.55 + Math.sin(t * 3 + p.phase) * 0.06 * p.sit;
       p.stick.visible = p.sit > 0.6;
     });
@@ -1374,7 +1966,11 @@ export function buildChina(world, C, hooks){
   const bakeKit = makeKit(world, C, root);
   bakeKit.bake();
   bakeKit.fixColors();
+  root.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => linMats.add(m)); });
   root.add(T.root);
-  return {root, interact, markers, update, journal, pyraLanded, places:CHINA_PLACES, coast:CHINA_COAST,
+  // adanın ejderhası: inciyi kovalayarak adanın üstünde süzülen uzun Çin ejderhası (pişirmeden sonra eklenir)
+  const lung = buildLongDragon(world, {cx:CX, cz:CZ - 30, sfx});
+  root.add(lung.root);
+  return {root, interact, markers, update, journal, pyraLanded, places:CHINA_PLACES, coast:CHINA_COAST, dragon:lung,
     dist:(x, z) => Math.max(0, -CHINA_COAST.dist(x, z)), get near(){ return near; }};
 }

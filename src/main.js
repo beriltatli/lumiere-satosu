@@ -8,6 +8,8 @@ import { buildRoyal } from './royal.js';
 import { createDragonRide } from './dragonride.js';
 import { buildSea } from './sea.js';
 import { buildChina, CHINA_COAST } from './china.js';
+import { createRooms } from './rooms.js';
+import { addLumiereRooms } from './rooms-lumiere.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -39,7 +41,11 @@ const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() =>
 const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
 if (hero.horse && hero._horseObstacle) interior.C.dynamics.push(hero._horseObstacle(true));
 // Yùlóng Adası: güneydoğuda, açık denizde Çin imparatorluk adası (Pyra ile gidilir)
-const china = buildChina(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, callPyra:at => ride.start(at)});
+// bina içleri (Yùlóng Adası'ndaki salonlar, atölyeler, köy evleri): kapıda E ile girilir
+const rooms = createRooms(world, {ui, enter:r => enterRoom(r), exit:r => leaveRoom(r)});
+// Lumière binalarının içleri (kütüphane, opera, rasathane, hamam, mutfak, atölyeler, mahzen, saat kulesi, av köşkü, haras, ahır…)
+addLumiereRooms(rooms, Object.assign({}, court.doors, royal.doors, estate.doors, {ahir:{x:-59.4, z:4, ry:Math.PI / 2}}), {ui, sfx:n => audio.sfx(n), getS:() => S, playHarpsichord:() => playHarpsichord()});
+const china = buildChina(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, callPyra:at => ride.start(at), rooms});
 ui.extraQuests = [S => china.journal(S)];
 const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hooks:{
   setMode:m => setMode(m), nextWeather:() => setWeather(nextWeather(), true),
@@ -234,6 +240,22 @@ async function enterCastle(){
   ui.toast('Lumière Şatosu', 2200);
   if (!S.notes.castle){ S.notes.castle = true; setTimeout(() => ui.toast('Büyük merdiven yukarı çıkar', 2600), 2600); }
 }
+async function enterRoom(r){
+  await ui.fade(() => {
+    if (hero.mounted) hero.dismount();
+    const sp = rooms.open(r);
+    hero.zone = 'oda'; hero.C = rooms.C; indoor = true; world.atmo.setOutdoor(false);
+    hero.teleport(sp.x, sp.y, sp.z, sp.yaw); hero.camDistT = 4.4; hero.camPitch = 0.22; hero.snapCamera = true;
+  });
+  ui.toast(r.name, 2200);
+}
+async function leaveRoom(r){
+  await ui.fade(() => {
+    rooms.close();
+    hero.zone = null; hero.C = C; indoor = false; world.atmo.setOutdoor(true); world.applyWeather(true); world.flareLight.visible = true;
+    hero.teleport(r.door.x, C.height(r.door.x, r.door.z), r.door.z, r.door.ry); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
+  });
+}
 async function leaveCastle(){
   await ui.fade(() => {
     hero.zone = null; setIndoor(false);
@@ -275,6 +297,7 @@ function save(){
   S.player = {x:hero.pos.x, y:hero.pos.y, z:hero.pos.z, yaw:hero.yaw};
   if (hero.zone === 'kule' && content) S.player = {x:content.TW.groundDoor.x, y:1, z:content.TW.groundDoor.z, yaw:content.TW.groundDoor.yaw};
   if (hero.zone === 'ic') S.player = {x:CASTLE_DOOR.x, y:1, z:CASTLE_DOOR.z, yaw:0};
+  if (hero.zone === 'oda' && rooms.active){ const d = rooms.active.door; S.player = {x:d.x, y:C.height(d.x, d.z), z:d.z, yaw:d.ry}; }
   if (hero.zone === 'gecit') S.player = Object.assign({}, royal.libraryExit);
   S.mounted = hero.mounted; S.horse = hero.horse ? (hero.horse.position.y < -20 ? {x:3.2, z:CASTLE_DOOR.z + 0.5, yaw:0} : {x:hero.horse.position.x, z:hero.horse.position.z, yaw:hero.horse.rotation.y}) : null;
   S.weather = world.weatherKey; S.sword = Object.assign({}, world.swordCfg);
@@ -380,7 +403,7 @@ $('btnGlb').addEventListener('click', async () => {
 function pickInteract(){
   const p = hero.pos; let best = null;
   const consider = (o, d) => { if (!best || d < best.d) best = {o, d}; };
-  const lists = hero.zone === 'ic' ? [interior.interact] : [content.interact, sanctuary.interact, court.interact, royal.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
+  const lists = hero.zone === 'ic' ? [interior.interact] : hero.zone === 'oda' ? [rooms.inside] : [rooms.outside('yulong'), rooms.outside('lumiere'), content.interact, sanctuary.interact, court.interact, royal.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
   for (const list of lists) for (const o of list){
     if ((o.zone || null) !== hero.zone || !o.show()) continue;
     if (o.y != null && Math.abs(p.y - o.y) > 2.2) continue;
@@ -517,7 +540,8 @@ function frame(){
     S.coins.push(id); audio.sfx('coin'); ui.coins(S.coins.length); save();
     if (S.coins.length === COIN_TOTAL) ui.toast('Bütün madalyonları topladın!', 3500);
   });
-  if (indoor){ applyIndoorLight(); winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } }
+  rooms.update(dt, t, hero);
+  if (indoor){ applyIndoorLight(); if (hero.zone === 'ic'){ winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } } }
   if (audio.started){
     audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), Math.max(sea.dist(hero.pos.x, hero.pos.z), china.dist(hero.pos.x, hero.pos.z)) * 0.45), indoorsHigh:hero.zone === 'kule', indoor});
   }
@@ -535,4 +559,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, china, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, startTour, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, china, rooms, enterRoom, whistleHorse, pickInteract };

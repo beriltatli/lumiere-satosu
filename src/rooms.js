@@ -7,6 +7,7 @@
 //    w, d, h,                              iç ölçüler (m); giriş kapısı yerel +z duvarında
 //    floor:'parke'|'mermer'|'tas'|'ahsap'|'toprak'|'mozaik'|'tatami', walls:'saray'|'alci'|'tas'|'ahsap'|'tugla'|'mermer'|'shoji',
 //    ceiling:'alci'|'boyali'|'kiris'|'tonoz', wallColor, curtain, doorStyle, windows:true, lights:n,
+//    lamp:'avize'|'fener' (Çin feneri), plain:true (lambri ve kornişsiz sade duvar),
 //    decor(R, room)}                       mobilya kiti R ile odayı döşeyen işlev
 import { Collision } from './game/collision.js';
 import { doorway, mergeStatic } from './doors.js';
@@ -171,7 +172,7 @@ export function createRooms(world, hooks){
     C.box(r.ox - w / 2 - T / 2, r.oz, T / 2, d / 2 + T); C.box(r.ox + w / 2 + T / 2, r.oz, T / 2, d / 2 + T);
     C.box(r.ox, r.oz - d / 2 - T / 2, w / 2 + T, T / 2); C.box(r.ox, r.oz + d / 2 + T / 2, w / 2 + T, T / 2);
     // lambri, sandalye kuşağı, süpürgelik, korniş
-    if (['saray', 'alci', 'mermer'].includes(r.walls)){
+    if (!r.plain && ['saray', 'alci', 'mermer'].includes(r.walls)){
       const pan = r.walls === 'mermer' ? mat(0xd8d0c0, {roughness:0.3}) : mat(r.walls === 'saray' ? 0xf2ead8 : 0x8a6a48, {roughness:0.6});
       const runs = [[-w / 2 + 0.03, 0, d, Math.PI / 2], [w / 2 - 0.03, 0, d, -Math.PI / 2], [0, -d / 2 + 0.03, w, 0]];
       runs.forEach(([x, z, len, ry]) => {
@@ -225,7 +226,7 @@ export function createRooms(world, hooks){
     r.interact.push({x:r.ox, z:r.oz + d / 2 - 1.2, y:ROOM_Y, r:2.0, zone:'oda', label:'Dışarı çık', show:() => true, act:() => hooks.exit(r)});
     // avizeler: oda büyüklüğüne göre
     const n = r.lights || (w * d > 220 ? 3 : w * d > 110 ? 2 : 1);
-    for (let i = 0; i < n; i++){ const z = n === 1 ? 0 : -d / 2 + (i + 0.5) * d / n; R.chandelier(0, z, {rustic:['ahsap', 'tas', 'tugla'].includes(r.walls)}); }
+    for (let i = 0; i < n; i++){ const z = n === 1 ? 0 : -d / 2 + (i + 0.5) * d / n; if (r.lamp === 'fener') R.lantern(0, z); else R.chandelier(0, z, {rustic:['ahsap', 'tas', 'tugla'].includes(r.walls)}); }
   }
 
   /* ---------- mobilya kiti (yerel koordinat: oda merkezi, y zeminden) ---------- */
@@ -345,6 +346,17 @@ export function createRooms(world, hooks){
         R.add(new THREE.SphereGeometry(0.12, 12, 8), gold, 0, -1.9, 0, true, g);
       }
       if (light) R.light(x, y - 1.2, z, 0xffd9a0, Math.max(5, Math.min(9, r.w * r.d / 22)), Math.max(r.w, r.d) * 1.1);
+      return g;
+    };
+    // Çin feneri: tavandan sarkan kırmızı ipek fener, altın başlıklar, püskül ve sıcak ışık
+    const lanternGlow = new THREE.MeshBasicMaterial({color:new THREE.Color(1.9, 0.45, 0.18), toneMapped:false});
+    R.lantern = (x, z, {y = r.h - 1.1, s = 1, light = true} = {}) => {
+      const g = new THREE.Group(); g.position.set(x, y, z); G.add(g);
+      R.cyl(0.01, 0.01, r.h - y, iron, 0, (r.h - y) / 2, 0, 4, g);
+      R.add(new THREE.SphereGeometry(0.34 * s, 16, 12), lanternGlow, 0, -0.1, 0, false, g).scale.y = 1.2;
+      [0.33, -0.53].forEach(dy => R.cyl(0.17 * s, 0.17 * s, 0.07, gold, 0, dy * s, 0, 12, g));
+      R.cyl(0.03, 0.05, 0.4 * s, mat(0xc8102e), 0, -0.8 * s, 0, 6, g);
+      if (light) R.light(x, y - 0.2, z, 0xffb070, Math.max(5, Math.min(9, r.w * r.d / 22)), Math.max(r.w, r.d) * 1.1);
       return g;
     };
     R.sconce = (x, y, z, ry) => { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; G.add(g); R.box(0.12, 0.3, 0.04, gold, 0, 0, 0.02, 0, g); R.box(0.04, 0.04, 0.22, gold, 0, -0.05, 0.13, 0, g); R.cyl(0.025, 0.025, 0.14, linen, 0, 0.04, 0.24, 6, g); R.add(new THREE.SphereGeometry(0.03, 6, 4), glowMat, 0, 0.14, 0.24, false, g); return g; };
