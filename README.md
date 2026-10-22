@@ -1,8 +1,15 @@
+
+
 # Lumière Şatosu: Kılıcın Rünleri
 
 Île-de-France şatolarından esinlenen üçüncü şahıs bir keşif ve macera oyunu. Tapınaktaki kılıç yüz yıldır uyuyor. Şato çevresine saklanmış beş rünü bul, onu atölyede şekillendir ve uyandır. three.js r147 ve Vite ile yazıldı. Bütün sesler ve müzik Web Audio ile kodda üretiliyor.
 
 ## Tanıtım videosu
+
+
+https://github.com/user-attachments/assets/b813c7f7-79e2-4376-a117-89be9dda47f2
+
+
 
 [docs/tum-alanlar.mp4](docs/tum-alanlar.mp4) · 1 dk 55 sn, 960×540, 8,9 MB: Lumière'in ve Yùlóng Adası'nın bütün bölgeleri ve bina içleri. Kısa sürüm: [docs/tanitim.mp4](docs/tanitim.mp4) (61 sn).
 
