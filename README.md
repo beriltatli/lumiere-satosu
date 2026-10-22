@@ -4,7 +4,7 @@
 
 ## Tanıtım videosu
 
-[docs/tanitim.mp4](docs/tanitim.mp4) · 61 sn, 1280×720, 8,8 MB: Lumière Şatosu, ejderhayla yolculuk, Yùlóng Adası, uzun Çin ejderhası, Yasak Şehir, Çin Seddi, pagoda, Prenses Lìhuá, çay tepesi, köy ve bina içleri.
+[docs/tum-alanlar.mp4](docs/tum-alanlar.mp4) · 1 dk 55 sn, 960×540, 8,9 MB: Lumière'in ve Yùlóng Adası'nın bütün bölgeleri ve bina içleri. Kısa sürüm: [docs/tanitim.mp4](docs/tanitim.mp4) (61 sn).
 
 ## Çalıştırma
 
