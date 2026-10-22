@@ -2,6 +2,10 @@
 
 Île-de-France şatolarından esinlenen üçüncü şahıs bir keşif ve macera oyunu. Tapınaktaki kılıç yüz yıldır uyuyor. Şato çevresine saklanmış beş rünü bul, onu atölyede şekillendir ve uyandır. three.js r147 ve Vite ile yazıldı. Bütün sesler ve müzik Web Audio ile kodda üretiliyor.
 
+## Tanıtım videosu
+
+[docs/tanitim.mp4](docs/tanitim.mp4) · 61 sn, 1280×720, 8,8 MB: Lumière Şatosu, ejderhayla yolculuk, Yùlóng Adası, uzun Çin ejderhası, Yasak Şehir, Çin Seddi, pagoda, Prenses Lìhuá, çay tepesi, köy ve bina içleri.
+
 ## Çalıştırma
 
 ```bash
