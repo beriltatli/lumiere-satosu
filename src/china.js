@@ -126,7 +126,6 @@ export function buildChina(world, C, hooks){
   /* ================= zemin, kıyı, iskele ================= */
   const ground = M.groundMat.clone(); ground.color.setRGB(0.86, 0.88, 0.74);
   const T = buildIslandTerrain(world, C, CHINA_COAST, {name:'Yùlóng kıyısı', ground, ocean:false, sand:0xb3a27e, grass:0x8ea85c, rocks:60, seed:6262});
-  root.add(T.root);
   const pier = T.addPier(HARBOR_A, 40);
   {
     const x0 = 100, x1 = 320, z0 = -320, z1 = 320, st2 = 4, nx = (x1 - x0) / st2 + 1, nz = (z1 - z0) / st2 + 1;
@@ -380,7 +379,7 @@ export function buildChina(world, C, hooks){
       for (let s = (k ? 1 : 0); s <= steps; s++){
         const t = s / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
         [-1, 1].forEach(sd => { const px = x + nx * sd * w / 2, pz = z + nz * sd * w / 2; pos.push(px, gy(px, pz) + 0.035, pz); uv.push(sd * w / 8, (len + sl * t) / 8); });
-        if (n > 0){ const a = (n - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+        if (n > 0){ const a = (n - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
         n++;
       }
       len += sl;
@@ -654,11 +653,11 @@ export function buildChina(world, C, hooks){
   {
     const N = 1300, stalkG = new THREE.CylinderGeometry(1, 1, 1, 6, 1); stalkG.translate(0, 0.5, 0);
     const [c, g] = canvas(32, 256); g.fillStyle = '#6f9a3a'; g.fillRect(0, 0, 32, 256); for (let y = 0; y < 256; y += 32){ g.fillStyle = '#9ab865'; g.fillRect(0, y, 32, 4); g.fillStyle = 'rgba(40,60,20,.35)'; g.fillRect(0, y + 4, 32, 2); }
-    const stalkM = world.windMat(new THREE.MeshLambertMaterial({map:ctex(c, 1, 3)}), 0.55, false);
+    const stalkM = world.windMat(new THREE.MeshStandardMaterial({map:ctex(c, 1, 3), roughness:0.6}), 0.55, false);
     const stalks = new THREE.InstancedMesh(stalkG, stalkM, N);
     const leafParts = []; for (let i = 0; i < 6; i++){ const p = new THREE.PlaneGeometry(0.16, 1.1); p.translate(0, 0.5, 0); p.rotateZ(-0.9 - rnd() * 0.6); p.rotateY(i / 6 * Math.PI * 2); leafParts.push(p); }
     const leafG = mergeBufferGeometries(leafParts);
-    const leafM = world.windMat(new THREE.MeshLambertMaterial({side:THREE.DoubleSide}), 1.2, true);
+    const leafM = world.windMat(new THREE.MeshStandardMaterial({side:THREE.DoubleSide, roughness:0.8}), 1.2, true);
     const leaves = new THREE.InstancedMesh(leafG, leafM, N * 3);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), p = new THREE.Vector3(), col = new THREE.Color();
     let n = 0, nl = 0;
@@ -1023,11 +1022,11 @@ export function buildChina(world, C, hooks){
     const trunks = new THREE.InstancedMesh(trunkG, trunkM, total);
     // çam: yatay katmanlı yassı tepe
     const pineG = mergeBufferGeometries([[0, 0, 0, 2.6], [0.6, 1.3, 0.3, 2.0], [-0.4, 2.4, -0.2, 1.4]].map(([x, y, z, r]) => { const g = new THREE.SphereGeometry(r, 9, 6); g.scale(1, 0.32, 1); g.translate(x, y, z); return g.toNonIndexed(); }));
-    const pines = new THREE.InstancedMesh(pineG, world.windMat(new THREE.MeshLambertMaterial({color:0xffffff}), 0.7, true), trees.pine.length);
+    const pines = new THREE.InstancedMesh(pineG, world.windMat(new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.85}), 0.7, true), trees.pine.length);
     const bloomG = mergeBufferGeometries([[0, 0, 0, 1.9], [1.0, -0.3, 0.4, 1.3], [-0.9, -0.2, -0.3, 1.4], [0.2, 0.9, -0.4, 1.2]].map(([x, y, z, r]) => { const g = new THREE.IcosahedronGeometry(r, 1); g.translate(x, y, z); return g; }));
-    const blooms = new THREE.InstancedMesh(bloomG, world.windMat(new THREE.MeshLambertMaterial({color:0xffffff}), 0.8, true), trees.bloom.length);
+    const blooms = new THREE.InstancedMesh(bloomG, world.windMat(new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.85}), 0.8, true), trees.bloom.length);
     const willowG = (() => { const parts = []; for (let i = 0; i < 14; i++){ const a = i / 14 * Math.PI * 2, g = new THREE.CylinderGeometry(0.9, 0.15, 4.2, 5, 1, true); g.translate(Math.sin(a) * 1.6, -2.1, Math.cos(a) * 1.6); parts.push(g.toNonIndexed()); } const top = new THREE.SphereGeometry(2.4, 10, 6); top.scale(1, 0.45, 1); parts.push(top.toNonIndexed()); return mergeBufferGeometries(parts); })();
-    const willows = new THREE.InstancedMesh(willowG, world.windMat(new THREE.MeshLambertMaterial({color:0xffffff, side:THREE.DoubleSide}), 1.0, true), trees.willow.length);
+    const willows = new THREE.InstancedMesh(willowG, world.windMat(new THREE.MeshStandardMaterial({color:0xffffff, side:THREE.DoubleSide, roughness:0.8}), 1.0, true), trees.willow.length);
     let n = 0;
     const put = (x, z, h, lean) => { const y = gy(x, z); e.set(lean[0], rnd() * 6.3, lean[1]); m4.compose(p.set(x, y - 0.1, z), q.setFromEuler(e), s.set(1, h, 1)); trunks.setMatrixAt(n++, m4); return y; };
     trees.pine.forEach(([x, z], i) => {
@@ -1300,7 +1299,7 @@ export function buildChina(world, C, hooks){
       const dx = tx - f.x, dz = tz - f.z, d = Math.hypot(dx, dz);
       if (d > 0.01){ const sp = Math.min(d, dt * (koi.feedT > 0 ? 2.2 : 1.1)); f.x += dx / d * sp; f.z += dz / d * sp; f.yaw += (Math.atan2(Math.sin(Math.atan2(dx, dz) - f.yaw), Math.cos(Math.atan2(dx, dz) - f.yaw))) * Math.min(1, dt * 4); }
       tmpQ.setFromAxisAngle(L(0, 1, 0), f.yaw + Math.sin(t * 6 + i) * 0.15); tmpS.setScalar(f.k);
-      tmpM.compose(tmpP.set(f.x, 0.135, f.z), tmpQ, tmpS); koi.mesh.setMatrixAt(i, tmpM);
+      tmpM.compose(tmpP.set(CX + f.x, 0.135, CZ + f.z), tmpQ, tmpS); koi.mesh.setMatrixAt(i, tmpM);
     });
     koi.mesh.instanceMatrix.needsUpdate = true;
     // pandalar: dolaş, otur ve bambu kemir; beslenince bakıcıya gel
@@ -1364,8 +1363,18 @@ export function buildChina(world, C, hooks){
     return out;
   }
 
-  kit.bake();
-  kit.fixColors();
+  // örnekli ağları dünya koordinatlı köke taşı (rüzgâr gölgelendiricisi ve atmosfer sisi ofsetli üst grubu hesaba katmıyor)
+  G.updateMatrixWorld(true);
+  G.children.filter(o => o.isInstancedMesh).forEach(im => {
+    const m = new THREE.Matrix4();
+    for (let i = 0; i < im.count; i++){ im.getMatrixAt(i, m); im.setMatrixAt(i, m.premultiply(G.matrix)); }
+    im.instanceMatrix.needsUpdate = true; root.add(im);
+  });
+  // birleştirme dünya koordinatında yapılır: merkezdeki kökte pişir (G'de değil); kıyı kendi malzemeleriyle sonra eklenir
+  const bakeKit = makeKit(world, C, root);
+  bakeKit.bake();
+  bakeKit.fixColors();
+  root.add(T.root);
   return {root, interact, markers, update, journal, pyraLanded, places:CHINA_PLACES, coast:CHINA_COAST,
     dist:(x, z) => Math.max(0, -CHINA_COAST.dist(x, z)), get near(){ return near; }};
 }
