@@ -535,5 +535,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, whistleHorse, pickInteract };
-clawindow.__dbg = {world, hero, ride, china, camera, setMode:m => setMode(m), getS:() => S}; // GEÇİCİ
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, china, whistleHorse, pickInteract };
