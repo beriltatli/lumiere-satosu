@@ -79,6 +79,7 @@ export class UI {
       if ((S.notes.places || []).length) add('Saray bahçelerini keşfet', 'Gül labirenti, gondol iskelesi, Zafer Takı, Ayna Galerisi, av köşkü, gizli geçitler… Pusuladaki altın işaretleri izle. (' + S.notes.places.length + '/' + PLACES.length + ')', S.notes.places.length >= PLACES.length, '#d4af37');
       if (S.notes.princess) add('Pyra\'nın yumurtası', S.notes.egg === 'tasiniyor' ? 'Mor yumurta sende. Doğudaki kubbeli ejderha kafesinin batı kapısına götür.' : 'Prenses Aurélie, ejderha Pyra\'nın kayıp mor yumurtasının Kelebek Vadisi\'ndeki şelalenin yanında olduğunu söyledi.', S.notes.egg === 'yuvada', '#b08aff');
     }
+    (this.extraQuests || []).forEach(fn => fn(S).forEach(q => add(q.title, q.hint, q.done, q.color)));
     $('journalFoot').innerHTML = '<span>⚜ Madalyon ' + S.coins.length + '/' + COIN_TOTAL + '</span><span>Süre ' + fmtTime(S.elapsed) + '</span>';
   }
   /** Satır satır diyalog; son seçilen seçeneğin sırasını döndürür. */
