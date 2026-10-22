@@ -9,8 +9,9 @@ import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUt
  *  waves   [[n, genlik, faz], ...] büyük girinti/çıkıntılar (n tam sayı olmalı ki eğri kapansın)
  *  flat    {angle, dist}: o yönde merkezden dist uzaklıkta düz bir kumsal (yumuşak birleşir)
  *  ripple  [[n, genlik, faz], ...] küçük dalgalanmalar
+ *  fn      GLSL işlev adı öneki (aynı dünyada ikinci bir ada varsa farklı olmalı: <fn>R, <fn>Dist)
  */
-export function makeCoast({cx = 0, cz = 0, radius = 300, waves = [[3, 14, 0.7], [5, 8, 2.1], [11, 4, 0.4]], flat = null, ripple = [[10, 5, 0], [25, 2, 1.3]], soft = 30} = {}){
+export function makeCoast({cx = 0, cz = 0, radius = 300, waves = [[3, 14, 0.7], [5, 8, 2.1], [11, 4, 0.4]], flat = null, ripple = [[10, 5, 0], [25, 2, 1.3]], soft = 30, fn = 'coast'} = {}){
   const sum = (list, a) => list.reduce((s, [n, A, p]) => s + A * Math.sin(n * a + p), 0);
   const R = a => {
     const rc = radius + sum(waves, a);
@@ -25,15 +26,15 @@ export function makeCoast({cx = 0, cz = 0, radius = 300, waves = [[3, 14, 0.7], 
   const f = v => Number(v).toFixed(5);
   const terms = list => list.map(([n, A, p]) => ` + ${f(A)} * sin(${f(n)} * a + ${f(p)})`).join('');
   const glsl = `
-    float coastR(vec2 p){
+    float ${fn}R(vec2 p){
       vec2 d = p - vec2(${f(cx)}, ${f(cz)}); float a = atan(d.x, d.y);
       float rc = ${f(radius)}${terms(waves)};
       float rf = 1e5;${flat ? ` { float c = cos(a - ${f(flat.angle)}); if (c > 0.02) rf = ${f(flat.dist)} / c; }` : ''}
       float m = min(rc, rf);
       return m - ${f(soft)} * log(exp(-(rc - m) / ${f(soft)}) + exp(-(rf - m) / ${f(soft)}))${terms(ripple)};
     }
-    float coastDist(vec2 p){ return length(p - vec2(${f(cx)}, ${f(cz)})) - coastR(p); }`;
-  return {cx, cz, R, dist, angle, point, glsl, radius};
+    float ${fn}Dist(vec2 p){ return length(p - vec2(${f(cx)}, ${f(cz)})) - ${fn}R(p); }`;
+  return {cx, cz, R, dist, angle, point, glsl, radius, fn};
 }
 
 /* ---------- paylaşılan dokular ---------- */
@@ -85,6 +86,9 @@ export function makeBoat(world, k, sail, hullColor){
  *  opts.ground   zemin malzemesi (verilmezse dünyanın çimi)
  *  opts.sand     kumsal rengi, opts.grass kıyı otu rengi, opts.rocks kaya sayısı
  *  opts.shallow / opts.deep  sığ ve derin su rengi
+ *  opts.ocean    false: okyanus çizme (aynı dünyadaki ikinci ada; denizi ilk adanınki örter)
+ *  opts.others   bu okyanusun içinde duran başka adaların kıyıları (köpük, sığlık, dalga sönümü; altları oyulur)
+ *  opts.avoid    (x, z) => true ise sürüklenen tekne geri döner
  * Dönüş: {root, dist, addPier, boats, update}
  */
 export function buildIslandTerrain(world, C, coast, opts = {}){
@@ -163,7 +167,8 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
 
   /* ---------- okyanus: adanın çevresinde kutupsal ızgara ---------- */
   const seaMat = new THREE.MeshStandardMaterial({color:lin(0x0f4a62), roughness:0.09, metalness:0.0, envMapIntensity:1.25});
-  {
+  const others = opts.others || [];
+  if (opts.ocean !== false){
     const NG = 360, NR = 120, RMAX = 3200;
     const pos = new Float32Array((NG + 1) * (NR + 1) * 3), uvs = new Float32Array((NG + 1) * (NR + 1) * 2), idx = [];
     for (let j = 0; j <= NR; j++) for (let i = 0; i <= NG; i++){
@@ -178,7 +183,9 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
     seaMat.normalMap = S.waterNormal; seaMat.normalScale.set(0.55, 0.55);
     seaMat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, {uT, uShallow:shallow, uDeep:deep, uFoam:foamC, uDark});
-      const head = coast.glsl + `
+      const near = others.reduce((e, o) => 'min(' + e + ', ' + o.fn + 'Dist(p))', coast.fn + 'Dist(p)');
+      const head = coast.glsl + others.map(o => o.glsl).join('') + `
+        float seaDist(vec2 p){ return ${near}; }
         vec3 wave(vec2 p, float t){
           // yönlü dalgalar: yükseklik ve türevleri
           vec3 r = vec3(0.0);
@@ -194,7 +201,7 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nuniform float uT;\n' + head)
         .replace('#include <beginnormal_vertex>', `
-          float dist0 = coastDist(position.xz);
+          float dist0 = seaDist(position.xz);
           float amp0 = smoothstep(-2.0, 30.0, dist0) * 0.85 + 0.15;
           vec3 wv = wave(position.xz, uT) * amp0;
           vec3 objectNormal = normalize(vec3(-wv.y, 1.0, -wv.z));
@@ -204,7 +211,8 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
         .replace('#include <begin_vertex>', `vec3 transformed = vec3(position.x, position.y + wv.x, position.z); vDist = dist0; vWP = transformed;`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nuniform float uT; uniform vec3 uShallow; uniform vec3 uDeep; uniform vec3 uFoam; uniform float uDark;\nvarying float vDist; varying vec3 vWP;\nfloat foamAmt;\n')
-        .replace('#include <color_fragment>', `#include <color_fragment>
+        .replace('#include <color_fragment>', `#include <color_fragment>${others.length ? `
+          if (vDist < -4.0) discard;   // öbür adaların altı` : ''}
           float dd = max(vDist, 0.0);
           diffuseColor.rgb = mix(uShallow, uDeep, smoothstep(0.0, 70.0, dd)) * (1.0 - uDark * 0.75);
           float surf = sin(dd * 0.9 - uT * 1.6 + sin((vWP.x + vWP.z) * 0.05) * 2.0) * 0.5 + 0.5;
@@ -223,7 +231,7 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
             normal = perturbNormal2Arb( - vViewPosition, normal, mapN, faceDirection );
           #endif`);
     };
-    const key = 'okyanus|' + coast.glsl.length + '|' + cx + '|' + cz + '|' + coast.radius;
+    const key = 'okyanus|' + coast.glsl.length + '|' + cx + '|' + cz + '|' + coast.radius + others.map(o => '|' + o.fn + o.cx + ',' + o.cz).join('');
     seaMat.customProgramCacheKey = () => key;
     const sea = new THREE.Mesh(geo, seaMat); sea.receiveShadow = false; sea.frustumCulled = false; sea.name = 'Okyanus'; root.add(sea);
   }
@@ -256,8 +264,14 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
     return {x:sx, z:sz, yaw, len, hw, h, end:[ex, ez], boatAt:[bx, bz], toW, group:G};
   }
 
-  // kıyıdan öteye yürünmez; iskelelerde iskelenin ucuna kadar
+  // kıyıdan öteye yürünmez; iskelelerde iskelenin ucuna kadar. Aynı çarpışma alanında birden çok ada
+  // varsa (Lumière ve Çin adası) oyuncu en yakın adanın kıyısına bağlanır.
+  const shores = C.shores || (C.shores = []);
+  shores.push({coast, walkways});
   C.bound = p => {
+    let s = shores[0];
+    for (const q of shores) if (q.coast.dist(p.x, p.z) < s.coast.dist(p.x, p.z)) s = q;
+    const {coast, walkways} = s, {cx, cz} = coast;
     for (const w of walkways){
       const [lx, lz] = w.local(p);
       if (lz > -2 && lz < w.len + 2 && Math.abs(lx) < w.hw + 0.6 && coast.dist(p.x, p.z) > 0.6){
@@ -286,6 +300,8 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
       if (b.drift){
         b.g.position.x += Math.sin(b.yaw) * b.drift * dt; b.g.position.z += Math.cos(b.yaw) * b.drift * dt;
         if (Math.hypot(b.g.position.x - b.home[0], b.g.position.z - b.home[1]) > 900) b.g.position.set(b.home[0] - Math.sin(b.yaw) * 400, b.g.position.y, b.home[1] - Math.cos(b.yaw) * 400);
+        // başka bir adaya yaklaşan tekne geri döner
+        if (opts.avoid && (b.turnT = (b.turnT || 0) - dt) <= 0 && opts.avoid(b.g.position.x + Math.sin(b.yaw) * 30, b.g.position.z + Math.cos(b.yaw) * 30)){ b.yaw += Math.PI; b.g.rotation.y = b.yaw; b.turnT = 20; }
       }
     });
     const nl = W.night > 0.5;

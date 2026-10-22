@@ -529,3 +529,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   startPlay();
 }
 window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, whistleHorse, pickInteract };
+cla
