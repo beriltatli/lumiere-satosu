@@ -15,7 +15,8 @@ import * as fflate from 'fflate';
 import { COURT_ZONES } from './court.js';
 import { ROYAL_ZONES } from './royal.js';
 import { createAtmosphere } from './atmosphere.js';
-import { SHORE_Z } from './sea.js';
+import { LUMIERE_COAST } from './sea.js';
+import { doorway } from './doors.js';
 
 const THREE = { ...T, Sky, GLTFExporter, EffectComposer, RenderPass, ShaderPass, UnrealBloomPass, GammaCorrectionShader };
 
@@ -136,10 +137,7 @@ function mesh(geo, mat, x, y, z, parent, shadow = true){
 }
 
 /* ground */
-// zemin güneyde kumsalın altında biter (z = SHORE_Z - 16); ötesi deniz
-const GROUND_Z1 = SHORE_Z - 16, GROUND_D = 1200 + GROUND_Z1;
-const groundGeo = new THREE.PlaneGeometry(2400, GROUND_D); { const uv = groundGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * GROUND_D / 2400); }
-const ground = mesh(groundGeo, groundMat, 0, 0, (GROUND_Z1 - 1200) / 2, scene, false); ground.rotation.x = -Math.PI/2;
+// zemin ada diskidir; kıyı çizgisine göre sea.js (coast.js) kurar
 const gravel = mesh(new THREE.PlaneGeometry(76, 74), gravelMat, 0, 0.03, 14, garden, false); gravel.rotation.x = -Math.PI/2;
 gravelMat.map.repeat.set(20, 20);
 const tGravel = mesh(new THREE.CircleGeometry(13, 64), gravelMat, TEMPLE.x, 0.05, TEMPLE.z, garden, false); tGravel.rotation.x = -Math.PI/2;
@@ -246,8 +244,8 @@ for (let k = 0; k < 4; k++) mesh(new THREE.BoxGeometry(12, (k + 1) * 0.25, 0.5),
   const s = new THREE.Shape(); s.moveTo(-5.2, 0); s.lineTo(5.2, 0); s.lineTo(4.2, 2.8); s.lineTo(2.2, 3.9); s.lineTo(-2.2, 3.9); s.lineTo(-4.2, 2.8); s.closePath();
   const rg2 = new THREE.ExtrudeGeometry(s, {depth:34.4, bevelEnabled:false}); rg2.translate(0, 0, -17.2);
   mesh(rg2, slateMat, 0, 6.2, 0, st);
-  for (let i = -2; i <= 2; i++){ const dsh = new THREE.Shape(); dsh.moveTo(-1.2,0); dsh.lineTo(1.2,0); dsh.lineTo(1.2,2.4); dsh.absarc(0,2.4,1.2,0,Math.PI,false);
-    const d = mesh(new THREE.ShapeGeometry(dsh, 16), doorMat, 5.08, 0.2, i * 6.5, st, false); d.rotation.y = Math.PI/2; }
+  // doğu cephesinde beş kemerli ahır kapısı (taş kemer, çivili kanatlar, fenerler)
+  for (let i = -2; i <= 2; i++) doorway({THREE, materials:{doorMat}}, st, {x:5.0, z:i * 6.5, ry:Math.PI / 2, w:2.4, h:3.4, y0:0.05, style:'kemer', steps:0, lanterns:i % 2 === 0, merge:true});
 }
 
 /* ================= garden ================= */
@@ -259,7 +257,7 @@ const PARTERRES = [
 ];
 const colliders = {boxes:[], circles:[]};
 // Ek alanlar (haras, seralar, kış bahçesi) için ağaçsız bölgeler [x0, z0, x1, z1]
-const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES, [-2000, SHORE_Z - 30, 2000, 4000]];
+const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES];
 const timeU = {value:0}, windU = {value:0.35};
 // Rüzgâr: yer değiştirme dünya uzayında uygulanır (örnekler rastgele dönük olsa da hepsi aynı yöne eğilir).
 // Rüzgâr yönünde ilerleyen esinti dalgaları çimen ve çiçeklerde "dalga" deseni oluşturur.
@@ -439,7 +437,7 @@ const lampHeadMat = new THREE.MeshBasicMaterial({color:0x222222, toneMapped:fals
   for (let a = 0.15; a < Math.PI - 0.1; a += 0.22) pts.push([TEMPLE.x + Math.cos(a)*20, TEMPLE.z + 3 + Math.sin(a)*16, 1.1 + rnd()*0.4]);
   for (let i = 0; i < 70; i++) pts.push([(rnd()-.5)*140, -62 - rnd()*45, 1 + rnd()*0.6]);
   for (let i = 0; i < 380; i++){ const a = rnd()*6.283, r = 115 + rnd()*260; pts.push([Math.cos(a)*r, 20 + Math.sin(a)*r, 1 + rnd()*0.8]); }
-  for (let i = pts.length - 1; i >= 0; i--){ const [x, z] = pts[i]; if (EXCLUDE.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1)) pts.splice(i, 1); }
+  for (let i = pts.length - 1; i >= 0; i--){ const [x, z] = pts[i]; if (LUMIERE_COAST.dist(x, z) > -30 || EXCLUDE.some(([x0, z0, x1, z1]) => x > x0 && x < x1 && z > z0 && z < z1)) pts.splice(i, 1); }
   const trunkG = new THREE.CylinderGeometry(0.16, 0.28, 3.2, 7); trunkG.translate(0, 1.6, 0);
   const leafG = new THREE.IcosahedronGeometry(1, 1);
   const trunks = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({color:0x4a3626, roughness:0.9}), pts.length);
@@ -1094,6 +1092,8 @@ loadTex('textures/ahsap.jpg', 1, 1, true, t => { doorMat.map = t; doorMat.color.
 
 // 6) Güneş parlaması (lens flare)
 const flareLight = new THREE.PointLight(0xffffff, 0, 1); scene.add(flareLight);
+// bütün adaların ortak gökyüzü ve ışığı: ada değişince gizlenmez (islands/index.js)
+[sky, hemi, sun, sun.target, stars, moon, clouds, rain, flareLight].forEach(o => { o.userData.shared = true; });
 {
   const f0 = texLoader.load(A + 'textures/flare0.png'), fh = texLoader.load(A + 'textures/flare_hex.png');
   const lf = new Lensflare();
@@ -1192,7 +1192,7 @@ function updateExtras(dt, t){
 return {
   THREE, renderer, scene, camera, composer, bloom, sky, pmrem, TEMPLE, CZ, PARTERRES, colliders, state,
   chateau, garden, temple, guards, horses, mixers, gltfLoader, texLoader, manager, horseModel,
-  materials:{stoneMat, slateMat, marbleMat, goldMat, darkMetal, hedgeMat, gravelMat, coatMat, whiteMat, bootMat, skinMat, hatMat, redMat, shaftMat, steelMat, doorMat, lawnMat},
+  materials:{stoneMat, slateMat, marbleMat, goldMat, darkMetal, hedgeMat, gravelMat, coatMat, whiteMat, bootMat, skinMat, hatMat, redMat, shaftMat, steelMat, doorMat, lawnMat, groundMat},
   makeGuard, makeHorse, part, addGuard, turnToward, followPath,
   WEATHER, W, setWeather, get weatherKey(){ return wKey; }, sunVec,
   MATERIALS, GEMS, swordCfg, buildSword, applyMaterial, applyGem, swordPivot,

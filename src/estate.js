@@ -3,6 +3,7 @@
 export function buildEstate(world, C){
   const { THREE, scene, materials:M, windMat, timeU, windU, CZ } = world;
   const root = new THREE.Group(); root.name = 'Malikane'; scene.add(root);
+  const doors = {};   // bina kapılarının önü: içleri rooms-lumiere.js bağlar
   let seed = 99; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const interact = [], markers = [], updaters = [];
   const meadows = [];
@@ -239,6 +240,7 @@ export function buildEstate(world, C){
     const b = new THREE.Group(); b.position.set(B.x, 0, B.z); root.add(b);
     add(new THREE.BoxGeometry(B.w, B.h, B.l), barnWood, 0, B.h / 2, 0, b);
     C.rect(B.x - B.w / 2, B.z - B.l / 2, B.x + B.w / 2, B.z + B.l / 2);
+    doors.haras = {x:B.x + B.w / 2 + 1.8, z:B.z, ry:Math.PI / 2};
     const s = new THREE.Shape(); const hw = B.w / 2 + 0.5;
     s.moveTo(-hw, 0); s.lineTo(-hw * 0.72, 3.0); s.lineTo(0, 5.2); s.lineTo(hw * 0.72, 3.0); s.lineTo(hw, 0); s.closePath();
     const rg = new THREE.ExtrudeGeometry(s, {depth:B.l + 1, bevelEnabled:false}); rg.translate(0, 0, -(B.l + 1) / 2);
@@ -490,7 +492,7 @@ export function buildEstate(world, C){
   function setDetail(q){ detail = q; meadows.forEach(m => { m.visible = q !== 'dusuk'; }); }
   const isSoft = (x, z) => x < -76 || (z > 96 && Math.abs(x) > 21);
 
-  const estate = {root, interact, markers, update, setDetail, isSoft, windOverride:null, ui:null,
+  const estate = {root, interact, markers, doors, update, setDetail, isSoft, windOverride:null, ui:null,
     coinSpots:[[GH_L.cx + 1.5, GH_L.cz + 4], [GH_R.cx - 1.5, GH_R.cz - 6], [WG.x + 15, WG.z - 3], [-92, -12], [-118, 64]]};
   return estate;
 }

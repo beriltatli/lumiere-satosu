@@ -2,6 +2,7 @@
 // saat kulesi, diplomasi ve ziyafet pavyonu, maskeli balo ve Ayna Galerisi, av köşkü ve av arazisi,
 // gizli geçitler ve yeraltı sığınağı, simya laboratuvarı, kuyumcu ve terzi atölyesi, uşak akademisi.
 import { makeKit } from './kit.js';
+import { doorway } from './doors.js';
 import { PLACES } from './court.js';
 
 export const CANAL = {z:205, x0:-150, x1:150, w:12};
@@ -38,6 +39,7 @@ PLACES.push(...ROYAL_PLACES);
 export function buildRoyal(world, C, hooks){
   const { THREE, scene, materials:M } = world;
   const root = new THREE.Group(); root.name = 'KraliyetYapilari'; scene.add(root);
+  const doors = {};   // bina kapılarının önü: içleri rooms-lumiere.js bağlar
   const interact = [], updaters = [], markers = [];
   const say = (name, text, choices) => hooks.ui.dialog([{name, text, choices}]);
   const K = makeKit(world, C, root, {seed:1789, interact, updaters, say});
@@ -429,7 +431,8 @@ export function buildRoyal(world, C, hooks){
     // kubbe ve sivri tepe
     add(new THREE.SphereGeometry(3.4, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), slate, 0, 34.4, 0, G).scale.y = 0.9;
     add(new THREE.CylinderGeometry(0.4, 0.6, 2.4, 10), cream, 0, 38.6, 0, G); add(new THREE.ConeGeometry(0.4, 3, 10), gold, 0, 41.3, 0, G); add(new THREE.SphereGeometry(0.3, 10, 8), gold, 0, 43, 0, G);
-    add(new THREE.BoxGeometry(2, 3.2, 0.15), M.doorMat, 0, 2.6, 3.56, G);
+    doorway(world, G, {z:3.5, w:2, h:3.0, y0:1.0, style:'kemer', steps:3});
+    doors.saat = {x:P.x, z:P.z + 6.0, ry:0};
     C.box(P.x, P.z, 4, 4);
     signBoard('Tour de l\'Horloge', 0, 6.8, 3.56, 0, 4, G);
     const aug = npc({coat:0x3a2a1a, apron:0x6a4a2e});
@@ -672,8 +675,9 @@ export function buildRoyal(world, C, hooks){
     add(gableGeo(11.6, 15.4, 4.2), slate, 0, 7.2, 0, G).rotation.y = Math.PI / 2;
     add(new THREE.BoxGeometry(1.4, 5, 1.4), rubble, 4.5, 10.2, -1.5, G);
     K.windows(G, 14, 10, 4, 1, 2.4);
-    add(new THREE.BoxGeometry(2.2, 3, 0.12), M.doorMat, 0, 1.5, 5.06, G);
-    antlers(0, 3.6, 5.2, 1.3, 0, G);
+    doorway(world, G, {z:5.0, w:2.2, h:2.9, y0:0.05, style:'rustik', steps:0, hood:false});
+    { const [fx, fz] = toWorld(G, 0, 7.0); doors.av = {x:fx, z:fz, ry:Math.PI / 2}; }
+    antlers(0, 3.75, 5.2, 1.3, 0, G);
     // sundurma, banklar ve odun yığını
     add(new THREE.BoxGeometry(8, 0.2, 3), wood, 0, 0.1, 6.6, G);
     [-3.8, 3.8].forEach(x => add(new THREE.CylinderGeometry(0.15, 0.15, 3.6, 8), darkWood, x, 1.8, 7.9, G));
@@ -897,8 +901,9 @@ export function buildRoyal(world, C, hooks){
   const GEMS = [['Elmas', 0xeaf6ff], ['Safir', 0x2a5ae6], ['Yakut', 0xe0103a], ['Zümrüt', 0x10b05a]];
   {
     const P = JEWEL;
-    const {G} = hall({x:P.x, z:P.z, w:20, d:12, h:7, wall:mat(0xe8d8c8, {roughness:0.7}), roof:'mansard', roofMat:slate, roofH:3, doorW:2.2});
+    const {G, front} = hall({x:P.x, z:P.z, w:20, d:12, h:7, wall:mat(0xe8d8c8, {roughness:0.7}), roof:'mansard', roofMat:slate, roofH:3, doorW:2.2});
     signBoard('Joaillerie & Couture Royale', 0, 6.2, 6.12, 0, 6, G);
+    doors.kuyumcu = {x:front[0], z:front[1], ry:0};
     // vitrinler: ışıldayan taşlar
     [-6.5, -3.8, 3.8, 6.5].forEach((x, i) => {
       add(new THREE.BoxGeometry(2.2, 1.0, 0.8), darkWood, x, 0.5, 6.7, G); const v = add(new THREE.BoxGeometry(2.2, 0.8, 0.8), glass, x, 1.4, 6.7, G, false); v.renderOrder = 2;
@@ -934,8 +939,9 @@ export function buildRoyal(world, C, hooks){
   const butlers = {list:[], inspect:0};
   {
     const P = BUTLER;
-    const {G} = hall({x:P.x, z:P.z, w:22, d:12, h:8, wall:mat(0xd8c8b0, {roughness:0.75}), roof:'mansard', roofMat:slate, roofH:3.2, doorW:2.4, winRows:2});
+    const {G, front} = hall({x:P.x, z:P.z, w:22, d:12, h:8, wall:mat(0xd8c8b0, {roughness:0.75}), roof:'mansard', roofMat:slate, roofH:3.2, doorW:2.4, winRows:2});
     signBoard('Académie des Majordomes', 0, 7.0, 6.12, 0, 6, G);
+    doors.usak = {x:front[0], z:front[1], ry:0};
     // avlu: şimşir çitler, eğitim masası
     const Y = {x:P.x, z:P.z + 13};
     plane(20, 12, mat(0xc8bca4, {roughness:0.7}), Y.x, 0.06, Y.z);
@@ -1117,5 +1123,5 @@ export function buildRoyal(world, C, hooks){
   let lastNight = -1;
   function winMatSync(night){ if (Math.abs(night - lastNight) > 0.01){ lastNight = night; K.winMat.emissiveIntensity = night * 1.8; K.lampMat.color.setRGB(0.25 + night * 1.6, 0.2 + night * 1.0, 0.1 + night * 0.4); } }
 
-  return {root, interact, markers, update, inTunnel:() => heroRef && heroRef.zone === 'gecit', libraryExit:{x:61, y:0, z:-78, yaw:0}};
+  return {root, interact, markers, update, doors, inTunnel:() => heroRef && heroRef.zone === 'gecit', libraryExit:{x:61, y:0, z:-78, yaw:0}};
 }

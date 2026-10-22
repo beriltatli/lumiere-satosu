@@ -261,7 +261,7 @@ export function createAtmosphere({THREE, renderer, scene, camera, sky}){
     side:THREE.BackSide, depthWrite:false, transparent:true, fog:false,
     blending:THREE.CustomBlending, blendSrc:THREE.OneFactor, blendDst:THREE.OneMinusSrcAlphaFactor,
   }));
-  dome.renderOrder = -1; dome.frustumCulled = false; scene.add(dome);
+  dome.renderOrder = -1; dome.frustumCulled = false; dome.userData.shared = true; scene.add(dome);
   dome.onBeforeRender = (r, s, cam) => { dome.position.copy(cam.position); dome.updateMatrixWorld(); };
 
   /* ================= renk düzenlemesi (son geçiş) ================= */
