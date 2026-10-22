@@ -13,9 +13,10 @@ export const LUMIERE_COAST = makeCoast({
 // iskele x ≈ 24'te güneye uzanır
 const PIER_ANGLE = Math.atan2(24, 280);
 
-export function buildSea(world, C){
+/** others: açıktaki diğer adaların kıyıları (Çin adası); deniz onların çevresinde köpürür, tekneler onlardan kaçar. */
+export function buildSea(world, C, {others = []} = {}){
   const { THREE } = world;
-  const T = buildIslandTerrain(world, C, LUMIERE_COAST, {name:'Deniz', ground:world.materials.groundMat, seed:4242});
+  const T = buildIslandTerrain(world, C, LUMIERE_COAST, {name:'Deniz', ground:world.materials.groundMat, seed:4242, others, avoid:(x, z) => others.some(o => o.dist(x, z) < 40)});
   const root = T.root;
   let seed = 977; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
