@@ -174,6 +174,12 @@ Lumière'in güneydoğusunda, güney kumsalından ~570 m açıkta, ufukta pagoda
 
 **Oyun:** Ustalarla üretime başla; her aşamada doğru usulü seçmek ürünün kalitesini belirler (Sıradan / İnce / İmparatorluk). Pyra her Lumière'den gelişte heybesinde Bordeaux şarabı ve Grasse parfümü getirir; Bakan Wáng Ān'da bunları Çin hazineleriyle takas et. Takaslar **prestij**, ritüeller (çay seremonisi, çan, tütsü, meditasyon, koi, pandalar, işaret ateşleri, şenlik) **kültür puanı** kazandırır; kültür arttıkça takaslar daha değerli olur. Prestijle unvanlar açılır: Yabancı konuk → Saray misafiri → Fransız elçisi → Mandarin dostu → Ejderha Tahtı'nın dostu (Yeşim Ejderha Mührü). Ada müziği pentatoniktir.
 
+## Adalar arası sefer: katkıcı adaları
+
+Lumière'in güney iskelesinin ucundaki **La Belle Étoile** gemisine (ya da Kaptan Jean-Baptiste'e) **E** ile binilince katkıcıların eklediği adalara sefer yapılır. Her ada `src/islands/<ada>/island.js` dosyasında tek bir tanımdır. Oyun bu dosyaları kendiliğinden bulur ve ana koda dokunmak gerekmez. Adalar ilk ziyarette kurulur ve aynı anda yalnız biri görünür. Kıyı, okyanus, iskele, keşif görevi ve kayıt sistemden gelir.
+
+Kendi adanı eklemek için: [CONTRIBUTING.md](CONTRIBUTING.md) (adım adım süreç) ve [src/islands/ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md) (kurallar ve API). Çalışan örnek: [src/islands/_sablon/island.js](src/islands/_sablon/island.js).
+
 ## Atmosfer ve ışık
 
 - **Hacimsel bulutlar:** gökyüzü, 700–1650 m arasındaki bir bulut katmanında ışın yürütülerek (ray marching) çizilir. Yoğunluk, açılışta üretilen döşenebilir 3B Perlin-Worley ve 2B örtü dokularından okunur. Güneş yönünde ışık örneklenir (Beer-Lambert, "powder" etkisi, çift yönlü Henyey-Greenstein saçılması): güneşe bakan kenarlar gümüş gibi parlar, tabanlar koyulaşır. Bulutlar rüzgâr yönünde sürüklenir, hava durumuyla örtüleri değişir: güneşlide dağınık kümülüs, bulutluda parçalı kapalı, yağmurda koyu ve kalın, gün batımında turuncu. Düşük çözünürlüklü bir hedefe çizilip sahnenin derinliğine göre birleştirilir.
@@ -201,6 +207,8 @@ src/china.js          Yùlóng Adası: Yasak Şehir, Çin Seddi, pagoda, bambu v
 src/coast.js          ada kıyısı, kumsal, okyanus, iskele (aynı denizde birden çok ada)
 src/longdragon.js     Yùlóng'un uzun Çin ejderhası (her karede yeniden dizilen gövde)
 src/rooms.js          bina içleri: kapıdan girilen, ilk girişte kurulan odalar
+src/islands/index.js  takımada: katkıcı adalarını bulur, doğrular, gemiyle sefer, ada başına çarpışma ve kayıt
+src/islands/_sablon/  yeni ada şablonu (yüklenmez; kopyalanır)
 src/game/hero.js      oyuncu, binilebilir at, üçüncü şahıs kamera
 src/game/content.js   karakterler, rünler, madalyonlar, kule, Ay Kapısı, güneş saati
 src/game/maze.js      tohumlu labirent üretimi
