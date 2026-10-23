@@ -231,7 +231,8 @@ export function buildIslandTerrain(world, C, coast, opts = {}){
             normal = perturbNormal2Arb( - vViewPosition, normal, mapN, faceDirection );
           #endif`);
     };
-    const key = 'okyanus|' + coast.glsl.length + '|' + cx + '|' + cz + '|' + coast.radius + others.map(o => '|' + o.fn + o.cx + ',' + o.cz).join('');
+    // anahtar kıyının bütün GLSL'ini içerir: aynı yarıçaplı iki adanın kıyıları farklıysa ayrı program derlenir
+    const key = 'okyanus|' + coast.glsl + others.map(o => o.glsl).join('');
     seaMat.customProgramCacheKey = () => key;
     const sea = new THREE.Mesh(geo, seaMat); sea.receiveShadow = false; sea.frustumCulled = false; sea.name = 'Okyanus'; root.add(sea);
   }

@@ -10,6 +10,7 @@ import { buildSea } from './sea.js';
 import { buildChina, CHINA_COAST } from './china.js';
 import { createRooms } from './rooms.js';
 import { addLumiereRooms } from './rooms-lumiere.js';
+import { createArchipelago } from './islands/index.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -52,6 +53,11 @@ const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hook
   photo:() => { composer.render(); renderer.domElement.toBlob(b => b && world.offer('lumiere-ejderha.png', b), 'image/png'); },
   landed:(from, to) => china.pyraLanded(from, to),
 }});
+// katkıcı adaları (src/islands/<ada>/island.js): Lumière iskelesindeki La Belle Étoile ile gidilir.
+// Hepsi dünyanın merkezinde kurulur, aynı anda yalnız biri görünür; Lumière'in güncellemeleri ve işaretleri o sırada durur.
+const islands = createArchipelago({world, hero, ui, audio, rooms, sea, getS:() => S, save:() => save(), env:{lumiereC:C}});
+const atHome = () => islands.current === 'lumiere';
+ui.extraQuests.push(S => islands.journal(S));
 // bütün malzemelere atmosfer yaması: sis, bulut gölgesi, yüzey çeşitliliği, temas gölgesi
 world.atmo.patchScene();
 const CASTLE_DOOR = {x:0, y:1, z:world.CZ + 10.6};
@@ -142,7 +148,8 @@ function startPlay(){
   world.setWeather(S.weather || 'gunesli', true);
   spawnHorse(S.horse || {x:3.6, z:-11.5, yaw:-0.6});   // Étoile her zaman hazır
   const P = S.player; hero.teleport(P.x, C.height(P.x, P.z), P.z, P.yaw);
-  if (S.mounted && hero.horse) hero.mount();
+  if (S.mounted && hero.horse && !S.island) hero.mount();
+  islands.restore(S);
   if (S.finished){ applySword(); world.setPowerOn(true); }
   if (!S.started){ S.started = true; ui.toast('Ahır ustası Gaston\'u bul', 3600); }
   setMode('play'); save();
@@ -252,8 +259,8 @@ async function enterRoom(r){
 async function leaveRoom(r){
   await ui.fade(() => {
     rooms.close();
-    hero.zone = null; hero.C = C; indoor = false; world.atmo.setOutdoor(true); world.applyWeather(true); world.flareLight.visible = true;
-    hero.teleport(r.door.x, C.height(r.door.x, r.door.z), r.door.z, r.door.ry); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
+    hero.zone = null; hero.C = islands.collision(); indoor = false; world.atmo.setOutdoor(true); world.applyWeather(true); world.flareLight.visible = true;
+    hero.teleport(r.door.x, hero.C.height(r.door.x, r.door.z), r.door.z, r.door.ry); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
   });
 }
 async function leaveCastle(){
@@ -297,7 +304,7 @@ function save(){
   S.player = {x:hero.pos.x, y:hero.pos.y, z:hero.pos.z, yaw:hero.yaw};
   if (hero.zone === 'kule' && content) S.player = {x:content.TW.groundDoor.x, y:1, z:content.TW.groundDoor.z, yaw:content.TW.groundDoor.yaw};
   if (hero.zone === 'ic') S.player = {x:CASTLE_DOOR.x, y:1, z:CASTLE_DOOR.z, yaw:0};
-  if (hero.zone === 'oda' && rooms.active){ const d = rooms.active.door; S.player = {x:d.x, y:C.height(d.x, d.z), z:d.z, yaw:d.ry}; }
+  if (hero.zone === 'oda' && rooms.active){ const d = rooms.active.door; S.player = {x:d.x, y:islands.collision().height(d.x, d.z), z:d.z, yaw:d.ry}; }
   if (hero.zone === 'gecit') S.player = Object.assign({}, royal.libraryExit);
   S.mounted = hero.mounted; S.horse = hero.horse ? (hero.horse.position.y < -20 ? {x:3.2, z:CASTLE_DOOR.z + 0.5, yaw:0} : {x:hero.horse.position.x, z:hero.horse.position.z, yaw:hero.horse.rotation.y}) : null;
   S.weather = world.weatherKey; S.sword = Object.assign({}, world.swordCfg);
@@ -313,6 +320,7 @@ function spawnHorse(at){
 }
 function whistleHorse(){
   if (!hero.horse || hero.mounted) return;
+  if (!atHome()){ ui.toast('Étoile Lumière\'de kaldı', 1800); return; }
   if (hero.zone === 'kule'){ ui.toast('Étoile kuleye çıkamaz', 1800); return; }
   if (hero.zone === 'gecit'){ ui.toast('Étoile gizli geçide sığmaz', 1800); return; }
   const Cz = hero.zone === 'ic' ? interior.C : C, s = Math.sin(hero.yaw), c = Math.cos(hero.yaw);
@@ -403,13 +411,13 @@ $('btnGlb').addEventListener('click', async () => {
 function pickInteract(){
   const p = hero.pos; let best = null;
   const consider = (o, d) => { if (!best || d < best.d) best = {o, d}; };
-  const lists = hero.zone === 'ic' ? [interior.interact] : hero.zone === 'oda' ? [rooms.inside] : [rooms.outside('yulong'), rooms.outside('lumiere'), content.interact, sanctuary.interact, court.interact, royal.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
+  const lists = hero.zone === 'ic' ? [interior.interact] : hero.zone === 'oda' ? [rooms.inside] : !atHome() ? [rooms.outside(islands.current), islands.interact()] : [islands.interact(), rooms.outside('yulong'), rooms.outside('lumiere'), content.interact, sanctuary.interact, court.interact, royal.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
   for (const list of lists) for (const o of list){
     if ((o.zone || null) !== hero.zone || !o.show()) continue;
     if (o.y != null && Math.abs(p.y - o.y) > 2.2) continue;
     const d = Math.hypot(o.x - p.x, o.z - p.z); if (d < o.r) consider(o, d);
   }
-  if (hero.horse && hero.zone !== 'kule'){
+  if (hero.horse && hero.zone !== 'kule' && atHome()){
     if (!hero.mounted){ const d = Math.hypot(hero.horse.position.x - p.x, hero.horse.position.z - p.z); if (d < 2.6 && Math.abs(hero.horse.position.y - p.y) < 1.5) consider({label:'Étoile\'e bin', act:() => { hero.mount(); audio.sfx('hoof'); }}, d - 1); }
     else if (!best) best = {o:{label:'Attan in', act:() => hero.dismount()}, d:0};
   }
@@ -473,7 +481,7 @@ function frame(){
     };
     hero.camYaw += 0; input.look.dx *= settings.sens; input.look.dy *= settings.sens;
     hero.update(dt, t, {rainSlow, sfx, towerCenter:content.TW, towerFloor:content.TW.floor});
-    content.update(dt, t);
+    if (atHome()) content.update(dt, t);
     S.elapsed += dt;
     // etkileşim
     const it = pickInteract(); ui.prompt(it ? it.label : null);
@@ -487,15 +495,15 @@ function frame(){
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
     ui.stats(S.elapsed, world.WEATHER[world.weatherKey].name + ' · rüzgâr ' + Math.round(6 + world.state.wind * 40) + ' km/s');
     const look = Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z);
-    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, china.markers, horseMarker())).concat(coinMarkers()));
-    updateOranges(dt, t);
+    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : !atHome() ? islands.markers() : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, china.markers, horseMarker())).concat(atHome() ? coinMarkers() : []));
+    if (atHome()) updateOranges(dt, t);
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
-    content.update(dt, t);
+    if (atHome()) content.update(dt, t);
   } else if (mode === 'fly'){
     // ejderha uçuşu: kamera ve hareket dragonride.js'te
     ride.update(dt, t);
-    content.update(dt, t);
+    if (atHome()) content.update(dt, t);
     S.elapsed += dt;
     weatherTimer -= dt; if (weatherTimer <= 0) setWeather(nextWeather(), true);
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
@@ -514,7 +522,7 @@ function frame(){
       if (cine.t > 3.2 && !cine.lit){ cine.lit = true; world.setPowerOn(true); ui.toast('Kılıç uyandı!', 3500); }
       if (cine.t > 11){ orbs.forEach(o => world.scene.remove(o)); orbs = []; cine = null; finishGame(); }
     }
-    content.update(dt, t);
+    if (atHome()) content.update(dt, t);
   }
 
   // fenerler
@@ -527,23 +535,26 @@ function frame(){
     world.sun.position.copy(world.sun.target.position).addScaledVector(W.elev > 0 ? world.sunVec : world.MOON_DIR, 250);
   }
   world.update(dt, t);
-  sanctuary.update(dt, t, hero);
-  court.update(dt, t, hero);
-  royal.update(dt, t, hero);
-  sea.update(dt, t, hero, indoor);
-  china.update(dt, t, hero);
-  audio.style = china.near ? 'cin' : 'fr';
-  estate.indoor = indoor;
-  estate.update(dt, t, hero);
-  interior.update(dt, t, hero, S, id => {
-    if (S.coins.includes(id)) return;
-    S.coins.push(id); audio.sfx('coin'); ui.coins(S.coins.length); save();
-    if (S.coins.length === COIN_TOTAL) ui.toast('Bütün madalyonları topladın!', 3500);
-  });
+  if (atHome()){
+    sanctuary.update(dt, t, hero);
+    court.update(dt, t, hero);
+    royal.update(dt, t, hero);
+    sea.update(dt, t, hero, indoor);
+    china.update(dt, t, hero);
+    estate.indoor = indoor;
+    estate.update(dt, t, hero);
+    interior.update(dt, t, hero, S, id => {
+      if (S.coins.includes(id)) return;
+      S.coins.push(id); audio.sfx('coin'); ui.coins(S.coins.length); save();
+      if (S.coins.length === COIN_TOTAL) ui.toast('Bütün madalyonları topladın!', 3500);
+    });
+  }
+  islands.update(dt, t);
+  audio.style = atHome() && china.near ? 'cin' : 'fr';
   rooms.update(dt, t, hero);
   if (indoor){ applyIndoorLight(); if (hero.zone === 'ic'){ winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } } }
   if (audio.started){
-    audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), Math.max(sea.dist(hero.pos.x, hero.pos.z), china.dist(hero.pos.x, hero.pos.z)) * 0.45), indoorsHigh:hero.zone === 'kule', indoor});
+    audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:atHome() ? Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), Math.max(sea.dist(hero.pos.x, hero.pos.z), china.dist(hero.pos.x, hero.pos.z)) * 0.45) : islands.dist(hero.pos.x, hero.pos.z) * 0.45, indoorsHigh:hero.zone === 'kule', indoor});
   }
   input.endFrame();
   composer.render();
@@ -559,4 +570,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, startTour, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, china, rooms, enterRoom, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, startTour, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, ride, sea, china, islands, rooms, enterRoom, whistleHorse, pickInteract };
