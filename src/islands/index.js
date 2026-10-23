@@ -29,7 +29,7 @@ function collect(){
 export const ISLANDS = collect();
 export const LUMIERE = {id:'lumiere', name:'Lumière Adası', theme:'Fransız barok sarayı, 1720\'ler', author:'Lumière Şatosu'};
 
-export function createArchipelago({world, hero, ui, audio, rooms, archery, sea, getS, save, env}){
+export function createArchipelago({world, hero, ui, audio, rooms, archery = null, sea, getS, save, env}){
   const { THREE, scene } = world;
   const built = new Map();          // id -> {def, root, C, interact, markers, updaters, update, targets, places, spawn}
   let current = 'lumiere', lumiereRoot = null, busy = false;
@@ -147,11 +147,11 @@ export function createArchipelago({world, hero, ui, audio, rooms, archery, sea, 
     busy = true;
     const go = () => {
       if (hero.mounted) hero.dismount();
-      archery.clear();
+      if (archery) archery.clear();
       let I = null;
       if (id !== 'lumiere'){
         try { I = built.get(id) || buildIsland(def); }
-        catch (e){ console.error('[ada] ' + id + ' kurulamadı:', e); ui.toast(def.name + ' yüklenemedi; Lumière\'e dönülüyor', 3600); id = 'lumiere'; }
+        catch (e){ console.error('[ada] ' + id + ' kurulamadı:', e); ui.toast(def.name + ' yüklenemedi; Lumière\'e dönülüyor', 3600); id = 'lumiere'; at = null; }
       }
       current = id; show(id);
       hero.zone = null;
@@ -203,5 +203,7 @@ export function createArchipelago({world, hero, ui, audio, rooms, archery, sea, 
     markers:() => current === 'lumiere' ? [] : (built.get(current) || {markers:[]}).markers,
     targets:() => current === 'lumiere' ? [] : (built.get(current) || {targets:[]}).targets,
     collision:() => current === 'lumiere' ? env.lumiereC : built.get(current).C,
+    /** Oyuncunun aktif katkıcı adasının kıyısına uzaklığı (ses için; Lumière'de 0). */
+    dist:(x, z) => current === 'lumiere' ? 0 : built.get(current).terrain.dist(x, z),
   };
 }
