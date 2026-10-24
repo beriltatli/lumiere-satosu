@@ -241,4 +241,31 @@ export function addLumiereRooms(rooms, doors, hooks){
       R.saddleRack(-0.8, 12, Math.PI); R.saddleRack(0.8, 12, Math.PI); R.hay(0, -13.5, 0.9);
       R.npc(1.2, 9.5, Math.PI, 'Seyis Jacques', ['Muhafız atları burada kalır. Devriyeden dönen at önce kurulanır, sonra yemlenir; tersi olmaz!', 'Étoile mi? O Gaston\'un harasında doğdu. Kontes ona kendi elleriyle isim verdi.'], {coat:0x5a4a3a, hat:false, apron:0x6a5a44});
     }});
+
+  /* ---------- Paris: Boulangerie Lumière ---------- */
+  add('boulangerie', doors.boulangerie, {name:'Boulangerie Lumière', w:12, d:8, h:4.2, floor:'mozaik', walls:'alci', wallColor:0xf2e6c8, ceiling:'alci', curtain:0, lights:2,
+    decor(R){
+      const crust = R.mat(0xc8873a, {roughness:0.5}), glassC = R.mat(0xdff3f6, {roughness:0.04, transparent:true, opacity:0.25});
+      R.counter(0, -1.2, {w:7, d:1.0, top:R.mat(0xe8e2d4, {roughness:0.25})});
+      R.box(6.8, 0.5, 0.9, glassC, 0, 1.25, -1.2);
+      // vitrindeki kruvasanlar, pain au chocolat, tartlar
+      for (let i = 0; i < 14; i++){ const c = R.add(new R.THREE.TorusGeometry(0.11, 0.05, 8, 12, Math.PI * 1.25), crust, -3 + i * 0.45, 1.05, -1.2 + (i % 2) * 0.2); c.rotation.x = -Math.PI / 2; }
+      [-2, 0, 2].forEach(x => R.add(new R.THREE.CylinderGeometry(0.22, 0.22, 0.06, 16), R.mat(0xe0a040, {roughness:0.4}), x + 0.3, 1.02, -0.95));
+      // arka duvarda baguette rafları
+      R.shelf(-3, 1.2, -3.8, 0, 3, 'jars');
+      for (let i = 0; i < 10; i++){ const b = R.add(new R.THREE.CapsuleGeometry(0.05, 0.75, 4, 8), crust, 1.6 + (i % 5) * 0.32, 1.1 + Math.floor(i / 5) * 0.8, -3.7); b.rotation.z = 0.15; }
+      R.table(-4, 2.2, {round:true, w:0.9}); R.chair(-4.8, 2.2, Math.PI / 2); R.chair(-3.2, 2.2, -Math.PI / 2);
+      R.npc(0, -2.6, 0, 'Madame Delacroix', ['Kocam dışarıda müşterileri karşılar, fırın benden sorulur! Saat dörtte kalkarım, hamur beşte fırına girer.', 'Kruvasan Fransız mı? Aslında Viyana\'dan gelen "kipferl"in torunudur. Ama tereyağlı katları biz Paris\'te mükemmelleştirdik.'], {coat:0xf4f2ee, apron:true});
+      R.interact(0, -0.4, 'Pain au chocolat al', () => { hooks.sfx && hooks.sfx('coin'); hooks.ui.toast('Sıcacık pain au chocolat: içinde iki çubuk çikolata eriyor.', 2800); });
+      R.note(-4, 2.2, 'Masadaki menüye bak', 'Menü', ['Croissant · Pain au chocolat · Baguette tradition · Tarte aux pommes · Café crème', 'Altta: "Her sabah taze. Pazar günleri kugelhopf: Colmarlı ustamızdan."']);
+    }});
+
+  /* ---------- Colmar: Winstub Au Koïfhus ---------- */
+  add('winstub', doors.winstub, {name:'Winstub Au Koïfhus', w:12, d:9, h:3.8, floor:'ahsap', walls:'ahsap', ceiling:'kiris', doorStyle:'rustik', curtain:0x8a1a2a, lights:2,
+    decor(R){
+      [[-3.5, -1.5], [0, -1.5], [3.5, -1.5], [-3.5, 1.8], [3.5, 1.8]].forEach(([x, z]) => { R.table(x, z, {w:1.6, d:0.9, cloth:0xb83a3a}); R.chair(x, z - 0.8, 0); R.chair(x, z + 0.8, Math.PI); });
+      R.counter(0, -3.8, {w:4}); [-5, -4.2].forEach(x => R.barrel(x, -3.7, {s:0.9}));
+      R.npc(0, -4.3, 0, 'Winstub sahibi Hansi', ['Willkommen! Bugün flammekueche var: ince hamur, krema, soğan ve pastırma, odun fırınında üç dakika.', 'Yanına bir kadeh Riesling? Alsas üzüm bağları Vosges dağlarının eteğinde, güneşe bakar.'], {coat:0x2a3a2a, apron:true});
+      R.interact(0, 0.2, 'Kugelhopf tadına bak', () => { hooks.sfx && hooks.sfx('coin'); hooks.ui.toast('Kugelhopf: kuru üzümlü, bademli, taç biçimli Alsas keki.', 2800); });
+    }});
 }
