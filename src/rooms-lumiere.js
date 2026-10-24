@@ -268,4 +268,25 @@ export function addLumiereRooms(rooms, doors, hooks){
       R.npc(0, -4.3, 0, 'Winstub sahibi Hansi', ['Willkommen! Bugün flammekueche var: ince hamur, krema, soğan ve pastırma, odun fırınında üç dakika.', 'Yanına bir kadeh Riesling? Alsas üzüm bağları Vosges dağlarının eteğinde, güneşe bakar.'], {coat:0x2a3a2a, apron:true});
       R.interact(0, 0.2, 'Kugelhopf tadına bak', () => { hooks.sfx && hooks.sfx('coin'); hooks.ui.toast('Kugelhopf: kuru üzümlü, bademli, taç biçimli Alsas keki.', 2800); });
     }});
+
+  /* ---------- Notre-Dame de Lumière ---------- */
+  add('katedral', doors.katedral, {name:'Notre-Dame de Lumière', w:20, d:34, h:16, floor:'mermer', walls:'tas', ceiling:'tonoz', curtain:0, lights:2,
+    decor(R){
+      const marble = R.mat(0xe8e2d8, {roughness:0.3});
+      for (let j = 0; j < 8; j++) [-1, 1].forEach(sd => R.bench(sd * 4.5, 8 - j * 2.6, 6, Math.PI));
+      R.box(6, 0.6, 3, marble, 0, 0.3, -13); R.box(3, 1.1, 1.2, marble, 0, 1.15, -13.2); R.collide(0, -13, 3, 1.5);
+      R.candles(-1, 1.7, -13.2); R.candles(1, 1.7, -13.2);
+      R.chandelier(0, -4); R.chandelier(0, 6);
+      R.npc(3, -11, 0, 'Org çalan Frère Benoît', ['Bu org beş bin borudan oluşur. En kalını ayak tabanlarında titrer, en incesi kuş gibi öter.', 'Taş tonozlar sesi yukarıda toplar; bu yüzden fısıltı bile nefin sonuna kadar duyulur.'], {coat:0x1a1a1e, hat:false});
+      R.interact(-3, -10, 'Bir mum yak', () => { hooks.sfx && hooks.sfx('chime'); hooks.ui.toast('Mumun alevi vitrayların renkleriyle titriyor.', 2600); });
+    }});
+
+  /* ---------- Bretanya: Crêperie ---------- */
+  add('creperie', doors.creperie, {name:'Crêperie de la Pointe', w:10, d:7, h:3.6, floor:'tas', walls:'tas', ceiling:'kiris', doorStyle:'rustik', curtain:0x1d3a6e, lights:2,
+    decor(R){
+      [[-3, -0.5], [0, -0.5], [3, -0.5], [-3, 2], [3, 2]].forEach(([x, z]) => { R.table(x, z, {round:true, w:1.0}); R.chair(x - 0.8, z, Math.PI / 2); R.chair(x + 0.8, z, -Math.PI / 2); });
+      R.counter(0, -2.9, {w:3.4}); R.fireplace(4.6, -1, -Math.PI / 2, {w:2, rustic:true});
+      R.npc(0, -3.3, 0, 'Krepçi Gwenaëlle', ['Karabuğday unundan "galette", tereyağlı tuzlu karamelli "crêpe"… Bretanya\'da krep elma şarabıyla, toprak bir kâseden içilir!'], {coat:0x1d3a6e, apron:true});
+      R.interact(0, -1.8, 'Tuzlu karamelli krep ye', () => { hooks.sfx && hooks.sfx('coin'); hooks.ui.toast('İnce, sıcak krep; üstünde eriyen tuzlu tereyağlı karamel. Délicieux!', 2800); });
+    }});
 }
