@@ -220,6 +220,29 @@ Static pieces are merged into single meshes by material and region at load time,
 
 Behind the château, an avenue leads north to a Paris quarter: a Haussmann boulevard with cream stone façades, cast-iron balconies, zinc mansard roofs, plane trees and gas lamps, the **Boulangerie Lumière** (talk to Monsieur Delacroix for a croissant, or step inside), the Café de Lumière terrace, Wallace fountains, a Morris column and a Guimard métro entrance. The Champ de Mars ends at the **Eiffel Tower** (1:3.6 scale); its lift takes you to the second floor, and at night the tower glows gold and sparkles. To the west, the boulevard becomes Colmar's Grand Rue: colourful half-timbered houses with flower boxes line the canal of **Petite Venise**, with flowered footbridges, a rowing boat, the glazed-tile St-Martin church with a stork's nest, the Schwendi fountain and the Winstub Au Koïfhus.
 
+## The French countryside
+
+The empty fields around the château now hold the regions of France (`src/terroir.js`): **Provence** in the west (lavender rows, an ochre mas with blue shutters, olive trees and cypresses, a pétanque court where you can throw against Marius), a **Normandy** farm (half-timbered longère with a thatched roof, apple orchard, cider, grazing Normande cows), **Brittany** (the Carnac standing stones, a striped lighthouse whose beam turns at night, a crêperie you can enter), **Notre-Dame de Lumière** in the east (twin towers, rose window, flying buttresses, a bell, an interior), a **village market** with a timber halle (cheese, vegetables, fish, flowers), the café-tabac and the mairie, **Beauce** wheat fields with a turning windmill and hay bales, **Mont-Saint-Michel** on its tidal flats (a monk takes you up to the abbey terrace), and the **Côte d'Azur** beach with striped cabins, parasols and an ice-cream cart.
+
+## Yeni Dünya Adası (New World Island)
+
+A separate island south-west of Lumière, built entirely from American architecture. Take the **ferry** from the west side of the south pier: the cinematic crossing passes in front of the Statue of Liberty and lands at the New York ferry pier. You can also fly there with Pyra.
+
+- **Districts:** New York (Manhattan grid of 70×20 m blocks, Art Deco setback towers, glass towers, brownstones with stoops, a Central Park, a neon square with invented billboards, yellow taxis), Boston (organic streets, Flemish-bond red brick, autumn trees, a white steeple), Chicago (60×60 m blocks with alleys, Chicago School and glass towers, the elevated "L" loop, a lake), Washington (the National Mall), St. Louis (on the Mississippi, with a paddle steamer), San Francisco (Victorian "Painted Ladies" stepping down the hills, a cable car), Route 66 (mesas, a chrome diner, a gas station, a motel), New Orleans (courtyard houses with cast-iron galleries, live oaks with Spanish moss, Jackson Square) and Miami Beach (pastel Art Deco hotels, neon, palms).
+- **Landmarks:** Statue of Liberty (on its own islet, reachable by boat), Lincoln Memorial, Washington Monument and the Capitol on one axis with 1 : φ spacing, Gateway Arch (inverted catenary), Mount Rushmore (stylized carved reliefs, not portraits), Golden Gate (catenary cables, fog under the deck). Read the inscriptions with **E**; each district has a guide.
+- **Night:** about a third of the windows light up, neon signs flicker, and up to six neon lights follow the player. The island has its own procedural jazz, city hum and surf.
+- Exploration progress is saved in `S.notes.america`, and the journal shows "Yeni Dünya'yı keşfet".
+
+Code: `src/america/` (design notes in [TASARIM.md](src/america/TASARIM.md), coordinates in [landmarks.json](src/america/landmarks.json)).
+
+| Folder | Contents |
+|---|---|
+| `core/` | `Terrain` (USA outline → Fourier coast, heightmap, lake, river), `Materials` (facade atlas + night-window shader), `Batcher`, `Structure`, `District` (grid / organic / strip lots, height falloff, LOD), `Focal` (axial plan, vistas, visibility scan, Poisson, framing), `Rng` |
+| `styles/` | One StyleSpec per file (auto-registered): newYorkArtDeco, brownstone, chicagoSchool, chicagoModern, sfVictorian, nolaColonial, bostonGeorgian, miamiDeco, route66, capitol |
+| `typologies/` | Skyscraper, Rowhouse, Courtyard, Villa, Diner |
+| `landmarks/` | StatueOfLiberty, LincolnMemorial, WashingtonMonument, CapitolDome, GatewayArch, GoldenGate, MountRushmore |
+| `props/` | neon (sign atlas, tubes, flicker, light pool), flora, street, vehicles (taxis, L train, cable car, paddle steamer, ferry) |
+
 ## Building interiors
 
 | | |

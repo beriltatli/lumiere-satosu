@@ -38,15 +38,19 @@ Bütün kod `src/america/` altında; ana koda yalnız bağlantı satırları ekl
 
 | Kimlik | Bölge | Konum (x, z) | Yükseklik | Yaklaşım (°) | Görüş yarıçapı |
 |---|---|---|---|---|---|
-| liberty | NY limanı adacığı | (372, -12) | 46 | feribot rotası (KD'den) | 160 |
-| lincoln | DC Mall batısı | (186, 40) | 12 | doğudan (Mall) | 90 |
-| washington | DC Mall ortası | (228, 40) | 56 | her yönden | 220 |
-| capitol | DC Mall doğusu | (296, 40) | 34 | batıdan (Mall) | 160 |
-| arch | St. Louis | (14, -6) | 60 | doğudan (nehir) | 240 |
-| rushmore | Black Hills | (-150, -150) | 52 (kaya) | güneş yönü (noktasal çarpım > 0.6) | 200 |
-| goldengate | SF körfez ağzı | (-338, -24) | 44 (kule) | batıdan ve doğudan | 220 |
+| liberty | NY limanı adacığı | (370, -20) | 46 | feribot rotası (güneydoğudan) | 160 |
+| lincoln | DC Mall batısı | (150, 40) | 14 | doğudan (Mall) | 90 |
+| washington | DC Mall ortası | (192, 40) | 56 | batıdan (Lincoln basamakları) | 220 |
+| capitol | DC Mall doğusu | (260, 40) | 45 | batı-güneybatıdan | 160 |
+| arch | St. Louis | (12, -10) | 60 | doğudan (nehir) | 240 |
+| rushmore | Black Hills | (-150, -150) | 52 (kaya) | önden; yüz öğle güneşine bakar (noktasal çarpım 0.85 > 0.6) | 200 |
+| goldengate | SF körfez ağzı | (-336, -30) | 44 (kule) | batı-güneybatıdan | 220 |
 
-Bölge merkezleri: NY (270, -60), Boston (290, -175), Chicago (130, -150) ve gölü (215, -170), St. Louis (40, -10), SF (-300, -40), Route 66 (-170, 95), New Orleans (140, 165), Miami (262, 225).
+Ölçülen değerler oyunda `window.__game.america.focal` ile okunur (yaklaşım yönü, kadraj ayrışması, örtülme oranı).
+
+Bölge merkezleri: New York (236, -48), Boston (282, -170), Chicago (112, -164) ve Michigan Gölü (206, -170), Washington (205, 40), St. Louis (-30, -10), San Francisco (-284, 46), Route 66 (-170, 104), New Orleans (154, 142), Miami Beach (248, 220).
+Mississippi kuzeyden (18, -246) Meksika Körfezi'ne (134, 198) akar; St. Louis (z = -10) ve kuzeyde (z = -160) iki köprüsü var.
+Lincoln–Washington–Kongre yerel (150, 40) → (192, 40) → (260, 40): aralıklar 42 m : 68 m (1 : φ).
 
 ## 3. Sınıf diyagramı
 

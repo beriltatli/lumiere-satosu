@@ -10,7 +10,7 @@ export const AMERICA = {x:-600, z:1020};
 const OUTLINE = [
   [-338, -236], [-300, -242], [-150, -238], [0, -242], [90, -234], [150, -208], [230, -216], [270, -234], [318, -228], [352, -198],
   [342, -160], [334, -150], [340, -128], [320, -108], [344, -90], [328, -70], [324, -32], [302, 8], [298, 60], [284, 104], [270, 132],
-  [258, 165], [270, 205], [280, 244], [266, 270], [244, 254], [230, 212], [205, 182], [170, 176], [140, 186], [110, 177], [60, 183],
+  [258, 165], [276, 205], [286, 244], [264, 276], [232, 258], [214, 216], [196, 186], [170, 176], [140, 186], [110, 177], [60, 183],
   [26, 212], [10, 254], [-20, 212], [-70, 172], [-150, 166], [-215, 160], [-262, 150], [-300, 112], [-322, 62], [-334, -5],
   [-318, -12], [-292, -22], [-282, -32], [-292, -44], [-318, -50], [-336, -56], [-340, -82], [-346, -160],
 ];
@@ -44,7 +44,7 @@ export const AMERICA_COAST = makeCoast({cx:AMERICA.x, cz:AMERICA.z, radius:F.rad
 
 // Mississippi (yerel): kuzeyden Meksika Körfezi'ne
 export const RIVER = [[18, -246], [34, -170], [30, -90], [32, -12], [46, 58], [80, 118], [114, 158], [134, 198]];
-export const LAKE = {x:212, z:-172, rx:32, rz:52};
+export const LAKE = {x:206, z:-170, rx:21, rz:46};
 
 function segDist(px, pz, pts){
   let best = 1e9, along = 0, acc = 0, bestAlong = 0;
@@ -107,11 +107,12 @@ export class Terrain {
     const step = 2, sx = Math.ceil((this.nx - 1) / step), sz = Math.ceil((this.nz - 1) / step);
     const pos = [], uv = [], col = [], idx = [], keep = [];
     for (let j = 0; j <= sz; j++) for (let i = 0; i <= sx; i++){
-      const lx = this.x0 + Math.min(i * step, this.nx - 1) * this.cell, lz = this.z0 + Math.min(j * step, this.nz - 1) * this.cell, y = this.at(lx, lz);
+      // kıyıya yakın zemin kum halkasının (y = 0.035) biraz altında kalır: aynı düzlemde titreşme olmasın
+      const lx = this.x0 + Math.min(i * step, this.nx - 1) * this.cell, lz = this.z0 + Math.min(j * step, this.nz - 1) * this.cell, cdv = -this.coastDist(lx, lz), y = this.at(lx, lz) - 0.08 * (1 - smooth(18, 34, cdv));
       const wx = AMERICA.x + lx, wz = AMERICA.z + lz;
       pos.push(wx, y, wz); uv.push((wx + 1200) / 2400, (1200 - wz) / 2400);
       const c = colorAt(lx, lz, y); col.push(c.r, c.g, c.b);
-      keep.push(this.coastDist(lx, lz) < -10);
+      keep.push(cdv > 12);
     }
     const row = sx + 1;
     for (let j = 0; j < sz; j++) for (let i = 0; i < sx; i++){

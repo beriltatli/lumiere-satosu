@@ -44,7 +44,7 @@ export class Audio {
     return {g, f};
   }
   /** Ortam seslerini dünyaya göre ayarla (her kare). */
-  ambience(dt, {wind, rain, fountainDist, night, indoorsHigh, indoor}){
+  ambience(dt, {wind, rain, fountainDist, night, indoorsHigh, indoor, city = 0, surf = 0}){
     if (!this.ctx) return;
     if (indoor){ wind *= 0.18; rain *= 0.3; fountainDist = 999; }
     const t = this.ctx.currentTime, A = this.amb;
@@ -52,6 +52,10 @@ export class Audio {
     A.wind.f.frequency.setTargetAtTime(300 + wind * 500 + Math.sin(t * 0.7) * 80, t, 0.5);
     A.rain.g.gain.setTargetAtTime(rain * 0.35, t, 0.4);
     A.water.g.gain.setTargetAtTime(Math.max(0, 1 - fountainDist / 22) * 0.25, t, 0.2);
+    // Yeni Dünya: şehir uğultusu (alçak geçiren gürültü) ve kıyıda dalga (yavaş dalgalanan bant geçiren gürültü)
+    if (!A.city){ A.city = this.loopNoise('lowpass', 160, 0.7); A.surf = this.loopNoise('bandpass', 520, 0.6); }
+    A.city.g.gain.setTargetAtTime(indoor ? 0 : city * 0.16, t, 0.6);
+    A.surf.g.gain.setTargetAtTime(indoor ? 0 : surf * (0.08 + 0.07 * Math.sin(t * 0.55) ** 2), t, 0.3);
     // kuşlar: gündüz ve yağmursuz
     this.birdT -= dt;
     if (this.birdT < 0){ this.birdT = 1.5 + Math.random() * 5; if (night < 0.4 && rain < 0.3 && !indoor) this.chirp(); }
@@ -121,6 +125,29 @@ export class Audio {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   }
+  /** Yeni Dünya: sallantılı (swing) caz. Yürüyen bas, ride zili, 2. ve 4. vuruşta piyano akorları; ii–V–I–VI. */
+  jazz(night, mtof){
+    const c = this.ctx, bpm = night > 0.5 ? 92 : 118, beat = 60 / bpm;
+    const PROG = [[55, 58, 62, 65], [48, 52, 55, 58], [53, 57, 60, 64], [50, 54, 57, 60]];   // Gm7, C7, Fmaj7, D7
+    while (this.nextNote < c.currentTime + 0.25){
+      const bar = this.bar, b = this.step % 4, ch = PROG[Math.floor(bar / 1) % PROG.length], t = this.nextNote;
+      // yürüyen bas: kök, üçlü, beşli, bir sonrakine yaklaşan nota
+      const nextRoot = PROG[(Math.floor(bar) + 1) % PROG.length][0];
+      const bassNote = [ch[0], ch[1], ch[2], nextRoot + (nextRoot > ch[2] ? -1 : 1)][b] - 12;
+      this.pluck(mtof(bassNote), t, 0.08, beat * 0.9);
+      // ride zili: düz ve sallantılı sekizlik (2/3 – 1/3)
+      this.burstAt(t, 7000, 0.04, 0.025); if (b % 2 === 1) this.burstAt(t + beat * 2 / 3, 7000, 0.03, 0.018);
+      // piyano: 2 ve 4'te kısa akor
+      if (b === 1 || b === 3) ch.slice(1).forEach(n => this.pluck(mtof(n + 12), t + (b === 3 ? beat * 0.66 : 0), 0.022, beat * 0.6));
+      this.nextNote += beat; this.step++; if (this.step % 4 === 0) this.bar++;
+    }
+  }
+  burstAt(t, freq, dur, vol){
+    const c = this.ctx, s = c.createBufferSource(); s.buffer = this.noiseBuf;
+    const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = freq;
+    const g = c.createGain(); s.connect(f); f.connect(g); g.connect(this.musicBus);
+    this.env(g, t, 0.002, dur, vol); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+  }
   schedule(night, rain){
     const c = this.ctx; if (this.music <= 0.001) { this.nextNote = c.currentTime + 0.2; return; }
     const minor = night > 0.5 || rain > 0.5;
@@ -133,6 +160,7 @@ export class Audio {
     const cin = this.style === 'cin';
     const prog = cin ? PENT : minor ? MIN : MAJ;
     const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+    if (this.style === 'amerika'){ this.jazz(night, mtof); return; }
     while (this.nextNote < c.currentTime + 0.25){
       const chord = prog[this.bar % prog.length], st = this.step % 16;
       const pat = [0, 1, 2, 1, 0, 1, 2, 3, 0, 1, 2, 1, 2, 1, 0, 3];

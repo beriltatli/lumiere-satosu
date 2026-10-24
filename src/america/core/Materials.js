@@ -56,7 +56,7 @@ export function makeMaterials(THREE){
   const atlasLit = new THREE.CanvasTexture(atlasCanvas(true)); atlasLit.anisotropy = 4;     // maske: doğrusal kalır
   const night = {value:0};
   function facadeMat(o = {}){
-    const m = new THREE.MeshStandardMaterial(Object.assign({map:atlas, emissiveMap:atlasLit, emissive:new THREE.Color(1, 0.72, 0.42), emissiveIntensity:1.6, roughness:0.7, metalness:0.05}, o));
+    const m = new THREE.MeshStandardMaterial(Object.assign({map:atlas, emissiveMap:atlasLit, emissive:new THREE.Color(1, 0.62, 0.3), emissiveIntensity:0.85, roughness:0.7, metalness:0.05}, o));
     m.onBeforeCompile = sh => {
       sh.uniforms.uNight = night;
       sh.vertexShader = 'attribute vec2 cell;\nattribute vec3 tint;\nattribute float seed;\nvarying vec2 vCell;\nvarying vec3 vTint;\nvarying float vSeed;\n'
@@ -107,7 +107,7 @@ export function makeMaterials(THREE){
     lin, solid, facade, night, atlas, atlasLit, tex, canvas, rnd,
     patina:new THREE.MeshStandardMaterial({map:patinaTex, metalness:0.35, roughness:0.55}),
     flame:new THREE.MeshBasicMaterial({color:lin(0xffc35a), toneMapped:false}),
-    gilt:solid(0xd4af37, {metalness:1, roughness:0.25}),
+    gilt:solid(0xd4af37, {metalness:1, roughness:0.25}), bronzeDark:solid(0x4a3a26, {metalness:0.8, roughness:0.4}),
     steel:solid(0x8a9099, {metalness:0.9, roughness:0.35}),
     curtain:solid(0x2b3d4f, {metalness:0.5, roughness:0.08, envMapIntensity:1.4}),
     stainless:solid(0xd0d4d8, {metalness:1.0, roughness:0.16}),
@@ -121,7 +121,10 @@ export function makeMaterials(THREE){
     iron:solid(0x1b1b1d, {roughness:0.5, metalness:0.6}),
     ironwork:new THREE.MeshStandardMaterial({map:ironTex, color:lin(0x1b1b1d), alphaTest:0.5, side:THREE.DoubleSide, roughness:0.5, metalness:0.5}),
     trim:solid(0xf2efe8, {roughness:0.6}), shutter:solid(0x1d1d1f, {roughness:0.6}), limestone:solid(0xd8cfbf, {roughness:0.75}),
-    asphalt:solid(0x3e3e40, {roughness:0.95}), lane:solid(0xe8c04a, {roughness:0.8}), sidewalk:solid(0xb8b4ac, {roughness:0.9}),
+    // yol yüzeyleri zemin ağının üstünde çizilsin (eğimde zemin üçgenleriyle yol örneklemesi tam örtüşmez)
+    asphalt:solid(0x3e3e40, {roughness:0.95, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-4}),
+    lane:solid(0xe8c04a, {roughness:0.8, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-8}),
+    sidewalk:solid(0xb8b4ac, {roughness:0.9, polygonOffset:true, polygonOffsetFactor:-3, polygonOffsetUnits:-6}),
     park:solid(0x5f8f3a, {roughness:1}), sand:solid(0xe6d6b0, {roughness:1}), desert:solid(0xc89a62, {roughness:1}),
     water:new THREE.MeshStandardMaterial({color:lin(0x24566a), roughness:0.05, metalness:0.3, transparent:true, opacity:0.9}),
     glassLobby:solid(0x22303a, {metalness:0.5, roughness:0.08}),

@@ -20,8 +20,9 @@ export class Batcher {
     const THREE = this.THREE, mat = typeof key === 'string' ? this.material(key) : key, mk = typeof key === 'string' ? key : key.uuid;
     let g = geo.index ? geo.toNonIndexed() : geo;
     if (matrix) g.applyMatrix4(matrix);
-    const facade = mat === this.M.facade, n = g.attributes.position.count;
-    Object.keys(g.attributes).forEach(a => { if (!['position', 'normal', 'uv', ...(facade ? ['cell', 'tint', 'seed'] : [])].includes(a)) g.deleteAttribute(a); });
+    const facade = mat === this.M.facade, n = g.attributes.position.count, own = facade ? ['cell', 'tint', 'seed'] : (mat.userData && mat.userData.attrs) || [];
+    Object.keys(g.attributes).forEach(a => { if (!['position', 'normal', 'uv', ...own].includes(a)) g.deleteAttribute(a); });
+    if (!facade) own.forEach(a => { if (!g.attributes[a]) g.setAttribute(a, new THREE.BufferAttribute(new Float32Array(n), 1)); });
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2));
     if (!g.attributes.normal) g.computeVertexNormals();
     g.clearGroups();

@@ -10,6 +10,7 @@ import { buildTerroir } from './terroir.js';
 import { createDragonRide } from './dragonride.js';
 import { buildSea } from './sea.js';
 import { buildChina, CHINA_COAST } from './china.js';
+import { buildAmerica, AMERICA_COAST } from './america/index.js';
 import { createRooms } from './rooms.js';
 import { addLumiereRooms } from './rooms-lumiere.js';
 import { createArchipelago } from './islands/index.js';
@@ -38,7 +39,7 @@ const interior = buildInterior(world, {
   cook:() => talkCook(), showKitchen:() => S.notes.cookQuest && !S.notes.coinMap && (S.notes.oranges || []).length >= 3,
 });
 hero.Cin = interior.C;
-const sea = buildSea(world, C, {others:[CHINA_COAST]});
+const sea = buildSea(world, C, {others:[CHINA_COAST, AMERICA_COAST]});
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
 const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
@@ -54,6 +55,10 @@ const rooms = createRooms(world, {ui, enter:r => enterRoom(r), exit:r => leaveRo
 addLumiereRooms(rooms, Object.assign({}, court.doors, royal.doors, paris.doors, terroir.doors, estate.doors, {ahir:{x:-59.4, z:4, ry:Math.PI / 2}}), {ui, sfx:n => audio.sfx(n), getS:() => S, playHarpsichord:() => playHarpsichord()});
 const china = buildChina(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, callPyra:at => ride.start(at), rooms});
 ui.extraQuests = [S => china.journal(S)];
+// Yeni Dünya Adası: güneybatıda açık denizde, güney iskelesindeki feribotla (ya da Pyra ile) gidilir
+const america = buildAmerica(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T), pier:sea.pier});
+america.setLumiereRoots([world.chateau, world.garden, world.temple, estate.root, court.root, royal.root, paris.root, terroir.root, sanctuary.root, china.root]);
+ui.extraQuests.push(S => america.journal(S));
 const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hooks:{
   setMode:m => setMode(m), nextWeather:() => setWeather(nextWeather(), true),
   photo:() => { composer.render(); renderer.domElement.toBlob(b => b && world.offer('lumiere-ejderha.png', b), 'image/png'); },
@@ -417,7 +422,7 @@ $('btnGlb').addEventListener('click', async () => {
 function pickInteract(){
   const p = hero.pos; let best = null;
   const consider = (o, d) => { if (!best || d < best.d) best = {o, d}; };
-  const lists = hero.zone === 'ic' ? [interior.interact] : hero.zone === 'oda' ? [rooms.inside] : !atHome() ? [rooms.outside(islands.current), islands.interact()] : [islands.interact(), rooms.outside('yulong'), rooms.outside('lumiere'), content.interact, sanctuary.interact, court.interact, royal.interact, paris.interact, terroir.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
+  const lists = hero.zone === 'ic' ? [interior.interact] : hero.zone === 'oda' ? [rooms.inside] : !atHome() ? [rooms.outside(islands.current), islands.interact()] : [islands.interact(), rooms.outside('yulong'), rooms.outside('lumiere'), content.interact, sanctuary.interact, court.interact, royal.interact, paris.interact, terroir.interact, america.interact, china.interact, estate.interact.map(o => Object.assign(o, {zone:o.zone || null})), [castleDoorInteract]];
   for (const list of lists) for (const o of list){
     if ((o.zone || null) !== hero.zone || !o.show()) continue;
     if (o.y != null && Math.abs(p.y - o.y) > 2.2) continue;
@@ -501,7 +506,7 @@ function frame(){
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
     ui.stats(S.elapsed, world.WEATHER[world.weatherKey].name + ' · rüzgâr ' + Math.round(6 + world.state.wind * 40) + ' km/s');
     const look = Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z);
-    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : !atHome() ? islands.markers() : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, paris.markers, terroir.markers, china.markers, horseMarker())).concat(atHome() ? coinMarkers() : []));
+    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : !atHome() ? islands.markers() : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, paris.markers, terroir.markers, america.markers, china.markers, horseMarker())).concat(atHome() ? coinMarkers() : []));
     if (atHome()) updateOranges(dt, t);
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
@@ -542,13 +547,17 @@ function frame(){
   }
   world.update(dt, t);
   if (atHome()){
-    sanctuary.update(dt, t, hero);
-    court.update(dt, t, hero);
-    royal.update(dt, t, hero);
-    paris.update(dt, t, hero);
-    terroir.update(dt, t, hero);
+    america.update(dt, t, hero);
+    // Yeni Dünya'dayken Lumière'in kökleri gizli: güncellemeleri de durur
+    if (!america.near){
+      sanctuary.update(dt, t, hero);
+      court.update(dt, t, hero);
+      royal.update(dt, t, hero);
+      paris.update(dt, t, hero);
+      terroir.update(dt, t, hero);
+    }
     sea.update(dt, t, hero, indoor);
-    china.update(dt, t, hero);
+    if (!america.near) china.update(dt, t, hero);
     estate.indoor = indoor;
     estate.update(dt, t, hero);
     interior.update(dt, t, hero, S, id => {
@@ -558,11 +567,11 @@ function frame(){
     });
   }
   islands.update(dt, t);
-  audio.style = atHome() && china.near ? 'cin' : 'fr';
+  audio.style = atHome() && america.near ? 'amerika' : atHome() && china.near ? 'cin' : 'fr';
   rooms.update(dt, t, hero);
   if (indoor){ applyIndoorLight(); if (hero.zone === 'ic'){ winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } } }
   if (audio.started){
-    audio.ambience(dt, {wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:atHome() ? Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), Math.max(sea.dist(hero.pos.x, hero.pos.z), china.dist(hero.pos.x, hero.pos.z)) * 0.45) : islands.dist(hero.pos.x, hero.pos.z) * 0.45, indoorsHigh:hero.zone === 'kule', indoor});
+    audio.ambience(dt, {...(atHome() ? america.ambience(hero.pos.x, hero.pos.z) : {}), wind:world.state.wind, rain:W.rain, night:W.night, fountainDist:atHome() ? Math.min(Math.hypot(hero.pos.x, hero.pos.z - 10), Math.max(sea.dist(hero.pos.x, hero.pos.z), china.dist(hero.pos.x, hero.pos.z)) * 0.45) : islands.dist(hero.pos.x, hero.pos.z) * 0.45, indoorsHigh:hero.zone === 'kule', indoor});
   }
   input.endFrame();
   composer.render();
@@ -578,4 +587,4 @@ if (sessionStorage.getItem('lumiere-autostart')){
   addEventListener('keydown', () => audio.start(), {once:true});
   startPlay();
 }
-window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, startTour, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, paris, terroir, ride, sea, china, islands, rooms, enterRoom, whistleHorse, pickInteract };
+window.__game = { world, hero, input, interior, enterCastle, leaveCastle, startGaze, startTour, get S(){ return S; }, setWeather, get mode(){ return mode; }, startPlay, content:() => content, estate, sanctuary, court, royal, paris, terroir, america, ride, sea, china, islands, rooms, enterRoom, whistleHorse, pickInteract };

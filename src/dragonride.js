@@ -3,6 +3,7 @@
 import { PLACES } from './court.js';
 import { CAGE } from './sanctuary.js';
 import { CHINA, CHINA_PLACES, onChina } from './china.js';
+import { AMERICA_PLACES, onAmerica } from './america/index.js';
 
 // Malikânenin ana yerleri (saray bahçeleri listesi PLACES'ten gelir)
 const CORE = [
@@ -24,7 +25,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
   const $ = id => document.getElementById(id);
   const L = (x, y, z) => new THREE.Vector3(x, y, z);
   const st = {active:false, pos:L(0, 0, 0), yaw:0, pitch:0, roll:0, speed:0, vy:0, grounded:true, cam:'binici', phase:0, flapLast:0, title:null, titleT:0, fire:0, home:null, fov:0, yawRate:0, typed:'', flameMode:false, burst:0};
-  const places = () => CORE.concat(PLACES.filter(p => p.r > 0).map(p => ({name:p.name, sub:subOf(p), x:p.x, z:p.z})), CHINA_PLACES, [{name:CHINA.name, sub:CHINA.sub, x:CHINA.x, z:CHINA.z - 300}]);
+  const places = () => CORE.concat(PLACES.filter(p => p.r > 0).map(p => ({name:p.name, sub:subOf(p), x:p.x, z:p.z})), CHINA_PLACES, [{name:CHINA.name, sub:CHINA.sub, x:CHINA.x, z:CHINA.z - 300}], AMERICA_PLACES);
   const camPos = L(0, 0, 0), camLook = L(0, 0, 0), tmp = L(0, 0, 0), fwd = L(0, 0, 1);
   const RIDER = L(0, 1.15, 0.85);       // gövde (body) yerel koordinatında eyer
 
@@ -201,7 +202,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     const ps = places(); let best = null, bd = 1e9;
     for (const p of ps){ const d = Math.hypot(p.x - st.pos.x, p.z - st.pos.z); if (d < bd){ bd = d; best = p; } }
     $('flyAlt').innerHTML = '<b>' + Math.round(st.pos.y) + '</b> m <span>· ' + st.speed.toFixed(1).replace('.', ',') + ' m/sn · yerden ' + Math.round(st.pos.y - gy) + ' m</span>';
-    $('flyLoc').textContent = best && bd < 70 ? 'Konum: ' + best.name : onChina(st.pos.x, st.pos.z) ? 'Konum: ' + CHINA.name : Math.hypot(st.pos.x, st.pos.z - 10) < 480 ? 'Konum: Lumière arazisi' : 'Konum: açık deniz';
+    $('flyLoc').textContent = best && bd < 70 ? 'Konum: ' + best.name : onChina(st.pos.x, st.pos.z) ? 'Konum: ' + CHINA.name : onAmerica(st.pos.x, st.pos.z) ? 'Konum: Yeni Dünya Adası' : Math.hypot(st.pos.x, st.pos.z - 10) < 480 ? 'Konum: Lumière arazisi' : 'Konum: açık deniz';
     if (best && bd < 45 && best !== st.title && !st.grounded){ st.title = best; showTitle(best.name, best.sub); }
     st.titleT -= dt; if (st.titleT <= 0) $('flyTitle').classList.remove('on');
   }
