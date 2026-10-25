@@ -1,132 +1,136 @@
-# Katkı rehberi: Lumière'e yeni bir ada ekle
+# Contributing guide: add a new island to Lumière
 
-Lumière Şatosu bir takımadaya dönüşüyor. Lumière'in güney iskelesindeki **La Belle Étoile** gemisi, katkıcıların eklediği adalara sefer yapar: Venedik lagünü, Japon kıyıları, İstanbul, ya da hayal ettiğin herhangi bir yer. Bu rehber, kendi adanı eklemenin adımlarını sırayla anlatır.
+Lumière Château is becoming an archipelago. The ship **La Belle Étoile** at Lumière's south pier sails to islands added by contributors: the Venetian lagoon, the coasts of Japan, Istanbul, or any place you can imagine. This guide walks you through adding your own island, step by step.
 
-- **Kurallar ve API:** [`src/islands/ADA_TALIMATI.md`](src/islands/ADA_TALIMATI.md)
-- **Çalışan örnek:** [`src/islands/_sablon/island.js`](src/islands/_sablon/island.js) (taş meydan, giriş yapılan bir han, dönen bir yel değirmeni, konuşan bir köylü ve kayda yazılan küçük bir görev)
+- **Rules and API:** [`src/islands/ADA_TALIMATI.md`](src/islands/ADA_TALIMATI.md)
+- **Working example:** [`src/islands/_sablon/island.js`](src/islands/_sablon/island.js) (a stone square, an inn you can enter, a turning windmill, a villager who talks and a small quest that is written to the save)
 
-Bir ada yalnızca **tek bir klasörden** oluşur: `src/islands/<ada-kimligi>/island.js`. Ana koda dokunman gerekmez. Oyun klasörü kendisi bulur, gemi listesine ekler, kıyıyı, okyanusu, iskeleyi ve kaptanı kurar, keşif görevini ve kaydı yönetir.
+An island is just **a single folder**: `src/islands/<island-id>/island.js`. You don't need to touch the main code. The game finds the folder on its own, adds it to the ship's list, builds the coast, ocean, pier and captain, and manages the exploration quest and the save.
 
-## 0. Başlamadan önce
+The game's interface and in-game text are in Turkish, so the labels quoted below are given in Turkish with an English gloss.
 
-- **Gereken:** Node.js 18 ya da üstü, git, WebGL2 destekli bir tarayıcı (Chrome, Firefox, Safari).
-- **Bilmen gereken:** biraz JavaScript ve [three.js](https://threejs.org/docs/) temeli (Mesh, Group, BufferGeometry, MeshStandardMaterial). Projede three.js **r147** kullanılıyor.
-- **Önce bir issue aç:** başlığı "Yeni ada: <adın adı>" olsun. Adanın konusunu ve neler olacağını birkaç cümleyle yaz. Böylece iki kişi aynı adayı yapmaz ve kimlik (id) çakışmaz.
+## 0. Before you start
 
-## 1. Depoyu hazırla
+- **You need:** Node.js 18 or newer, git, and a browser with WebGL2 (Chrome, Firefox, Safari).
+- **You should know:** some JavaScript and the basics of [three.js](https://threejs.org/docs/) (Mesh, Group, BufferGeometry, MeshStandardMaterial). The project uses three.js **r147**.
+- **Open an issue first:** title it "New island: <island name>". Describe the island's theme and what it will contain in a few sentences. That way two people don't build the same island and ids don't clash.
+
+## 1. Set up the repository
 
 ```bash
-# GitHub'da depoyu fork'la, sonra:
-git clone git@github.com:<kullanici-adin>/lumiere-satosu.git
+# Fork the repository on GitHub, then:
+git clone git@github.com:<your-username>/lumiere-satosu.git
 cd lumiere-satosu
 git remote add upstream git@github.com:beriltatli/lumiere-satosu.git
 npm install
-git checkout -b ada/<ada-kimligi>          # ör. ada/venedik
+git checkout -b ada/<island-id>          # e.g. ada/venedik
 ```
 
-## 2. Şablonu kopyala
+## 2. Copy the template
 
 ```bash
-cp -r src/islands/_sablon src/islands/<ada-kimligi>
+cp -r src/islands/_sablon src/islands/<island-id>
 ```
 
-`src/islands/<ada-kimligi>/island.js` dosyasını aç ve şu alanları değiştir:
+Open `src/islands/<island-id>/island.js` and change these fields:
 
 ```js
-id:'venedik',                 // klasör adıyla AYNI olmalı; küçük harf, rakam, tire
-name:'Venedik Lagünü',
-theme:'Kanallar ve maskeler, 1750\'ler',
-author:'<github-kullanici-adin>',
-description:'Lagünün simgelerini bul.',
-seed:31,                      // herhangi bir tam sayı
+id:'venedik',                 // must be the SAME as the folder name; lowercase letters, digits, hyphens
+name:'Venedik Lagünü',        // "Venetian Lagoon"
+theme:'Kanallar ve maskeler, 1750\'ler',   // "Canals and masks, 1750s"
+author:'<your-github-username>',
+description:'Lagünün simgelerini bul.',     // "Find the landmarks of the lagoon."
+seed:31,                      // any integer
 ```
 
-Kimlik kuralı: `^[a-z][a-z0-9-]{1,30}$`. Türkçe karakter, büyük harf ve boşluk kullanılamaz (`istanbul` olur, `İstanbul` olmaz).
+In-game text (`name`, `theme`, `description`, dialogue, signs) is written in Turkish; see rule 6 in the [island guide](src/islands/ADA_TALIMATI.md#rules-pr-checklist).
 
-## 3. Oyunda aç
+Id rule: `^[a-z][a-z0-9-]{1,30}$`. Turkish characters, capital letters and spaces are not allowed (`istanbul` works, `İstanbul` doesn't).
+
+## 3. Open it in the game
 
 ```bash
 npm run dev
 ```
 
-Tarayıcı `http://localhost:5173` adresinde açılır. Adana gitmenin iki yolu var:
+The browser opens at `http://localhost:5173`. There are two ways to reach your island:
 
-- **Oyunun içinden:** Yeni oyun başlat, Lumière'in güneyindeki iskeleye yürü, iskelenin ucunda **E** ile gemiye bin ve listeden adanı seç.
-- **Kısa yol (geliştirirken):** oyunu başlattıktan sonra tarayıcı konsolunda:
+- **From inside the game:** start a new game, walk to the pier south of Lumière, board the ship with **E** at the end of the pier and pick your island from the list.
+- **Shortcut (while developing):** after starting the game, in the browser console:
 
   ```js
   __game.islands.travel('venedik')
   ```
 
-Dosyayı her kaydedişinde sayfa yenilenir. Kayıt tarayıcıda tutulduğu için oyun kaldığın adadan ve konumdan devam eder.
+The page reloads every time you save the file. Because the save lives in the browser, the game picks up on the island and at the spot where you left off.
 
-Yararlı konsol komutları:
+Useful console commands:
 
 ```js
-__game.hero.teleport(0, 0, 50, 0)            // adada (x, y, z, bakış) noktasına ışınlan
-__game.setWeather('gece')                    // gunesli | bulutlu | yagmurlu | gunbatimi | gece
-__game.world.renderer.info.render            // çizim çağrısı (calls) ve üçgen sayısı
-__game.S.islands.venedik                     // adanın kaydı: found, store
+__game.hero.teleport(0, 0, 50, 0)            // teleport to (x, y, z, facing) on the island
+__game.setWeather('gece')                    // gunesli | bulutlu | yagmurlu | gunbatimi | gece (sunny | cloudy | rainy | sunset | night)
+__game.world.renderer.info.render            // draw calls (calls) and triangle count
+__game.S.islands.venedik                     // the island's save: found, store
 ```
 
-Adanın kaydını sıfırlamak için: `delete __game.S.islands.venedik`, sonra sayfayı yenile. Bütün kaydı sıfırlamak için başlık ekranındaki "Yeni oyun" düğmesini kullan.
+To reset the island's save: `delete __game.S.islands.venedik`, then reload the page. To reset the whole save, use the "Yeni oyun" (New game) button on the title screen.
 
-## 4. Adayı kur
+## 4. Build the island
 
-[`ADA_TALIMATI.md`](src/islands/ADA_TALIMATI.md) dosyasında her şey ayrıntılı anlatılıyor. Önerilen sıra:
+Everything is described in detail in [`ADA_TALIMATI.md`](src/islands/ADA_TALIMATI.md). Suggested order:
 
-1. **Kıyı ve zemin:** `coast` ve `terrain` ile adanın biçimini ve renklerini ayarla. `harbor` ile iskelenin yönünü seç.
-2. **Ana yapılar:** önce büyük kütleleri yerleştir (`kit.hall`, kendi geometrilerin). Her katı nesneye `ctx.C.box` / `ctx.C.circle` ekle.
-3. **Keşfedilecek yerler:** 3 ile 10 arası `ctx.place(...)`. Bunlar adanın keşif görevini oluşturur.
-4. **İnsanlar ve diyaloglar:** `kit.npc` ile `kit.placeNPC`, ya da `ctx.interact`.
-5. **İç mekânlar (isteğe bağlı):** `ctx.room(...)`.
-6. **Görev (isteğe bağlı):** durumu `ctx.store` içinde tut, `ctx.marker` ile yol göster.
-7. **Canlılık:** `ctx.onUpdate` ile hareket (kayıklar, bayraklar, kuşlar), `ctx.W` ile gece ve yağmura tepki.
-8. **Cilalama:** rüzgâr, gece ışıkları, sesler (`ctx.sfx`).
+1. **Coast and ground:** set the island's shape and colours with `coast` and `terrain`. Choose the pier's direction with `harbor`.
+2. **Main buildings:** place the large masses first (`kit.hall`, your own geometry). Add `ctx.C.box` / `ctx.C.circle` for every solid object.
+3. **Places to discover:** between 3 and 10 `ctx.place(...)` calls. These make up the island's exploration quest.
+4. **People and dialogue:** `kit.npc` with `kit.placeNPC`, or `ctx.interact`.
+5. **Interiors (optional):** `ctx.room(...)`.
+6. **Quest (optional):** keep its state in `ctx.store` and guide the player with `ctx.marker`.
+7. **Life:** movement with `ctx.onUpdate` (boats, flags, birds), reactions to night and rain with `ctx.W`.
+8. **Polish:** wind, night lights, sounds (`ctx.sfx`).
 
-Dış model, doku ya da ses dosyası ekleme. Projenin tamamı gibi her şeyi kodla üret (ayrıntılar talimatta).
+Don't add external model, texture or sound files. Like the rest of the project, generate everything in code (details in the guide).
 
-## 5. Göndermeden önce test et
+## 5. Test before you submit
 
-Aşağıdakilerin hepsini kendin dene:
+Try all of these yourself:
 
-- [ ] `npm run build` hatasız tamamlanıyor.
-- [ ] Konsolda `[ada]` ile başlayan ya da başka bir hata veya uyarı yok.
-- [ ] Gemiyle adana gidiliyor, adadan Lumière'e geri dönülüyor ve Lumière her şeyiyle yerinde.
-- [ ] Adadayken sayfayı yenileyip **Devam et** dendiğinde oyun aynı adada başlıyor ve görev durumu korunuyor.
-- [ ] Bütün keşif yerleri bulunabiliyor ve görev günlüğünde (**J**) "<Ada>: keşif" görevi tamamlanıyor.
-- [ ] Hiçbir binanın, ağacın ya da kayanın içinden geçilmiyor. Görünmez duvara çarpılmıyor.
-- [ ] Varsa her odaya girilip çıkılabiliyor ve çıkınca kapının önüne dönülüyor.
-- [ ] Gece, yağmur ve gün batımında ada düzgün görünüyor (`__game.setWeather(...)`).
-- [ ] Menüde kalite **Orta** iken adanın en kalabalık yerinde `renderer.info.render.calls` 300'ün altında, kare hızı akıcı.
-- [ ] Telefon boyutunda (tarayıcının cihaz görünümü) arayüz ve dokunmatik kontroller çalışıyor.
-- [ ] Değişikliklerin yalnızca `src/islands/<ada-kimligi>/` içinde (`git status` ile kontrol et).
+- [ ] `npm run build` completes without errors.
+- [ ] No errors or warnings in the console, whether they start with `[ada]` or not.
+- [ ] You can sail to your island and back to Lumière, and Lumière is fully intact.
+- [ ] If you reload the page while on the island and choose **Devam et** (Continue), the game starts on the same island and the quest state is kept.
+- [ ] Every place can be discovered, and the "<Island>: keşif" (exploration) quest completes in the journal (**J**).
+- [ ] You can't walk through any building, tree or rock, and you don't bump into invisible walls.
+- [ ] If there are rooms, each one can be entered and left, and leaving puts you back in front of the door.
+- [ ] The island looks right at night, in rain and at sunset (`__game.setWeather(...)`).
+- [ ] With quality set to **Orta** (Medium) in the menu, `renderer.info.render.calls` stays under 300 at the busiest spot on the island and the frame rate is smooth.
+- [ ] At phone size (the browser's device view) the interface and touch controls work.
+- [ ] Your changes are only inside `src/islands/<island-id>/` (check with `git status`).
 
-## 6. Pull request aç
+## 6. Open a pull request
 
 ```bash
-git add src/islands/<ada-kimligi>
-git commit -m "Yeni ada: <Adanın adı>"
+git add src/islands/<island-id>
+git commit -m "New island: <Island name>"
 git fetch upstream && git rebase upstream/main
-git push -u origin ada/<ada-kimligi>
+git push -u origin ada/<island-id>
 ```
 
-GitHub'da `beriltatli/lumiere-satosu` deposunun `main` dalına bir pull request aç. PR açıklamasına şunları yaz:
+On GitHub, open a pull request against the `main` branch of `beriltatli/lumiere-satosu`. In the PR description, include:
 
-- Adanın kısa tanıtımı ve keşif yerlerinin listesi
-- Varsa görevin özeti (nasıl tamamlanıyor?)
-- En az 2 ekran görüntüsü (biri gündüz, biri gece). Fotoğraf modu: **Esc**, sonra "Fotoğraf modu", sonra "PNG"
-- En kalabalık yerdeki `renderer.info.render` değerleri (calls, triangles)
-- Açtığın issue'nun numarası (`Closes #12` gibi)
+- A short introduction to the island and the list of places to discover
+- A summary of the quest, if there is one (how is it completed?)
+- At least 2 screenshots (one by day, one at night). Photo mode: **Esc**, then "Fotoğraf modu" (Photo mode), then "PNG"
+- The `renderer.info.render` values (calls, triangles) at the busiest spot
+- The number of the issue you opened (like `Closes #12`)
 
-## 7. İnceleme
+## 7. Review
 
-Bakımcı adayı oyunda gezer, kontrol listesine ve [kurallara](src/islands/ADA_TALIMATI.md#kurallar-pr-kontrol-listesi) bakar, gerekirse değişiklik ister. Değişiklikleri aynı dala commit'leyip push'larsan PR kendiliğinden güncellenir.
+The maintainer explores the island in the game, checks it against the checklist and the [rules](src/islands/ADA_TALIMATI.md#rules-pr-checklist), and asks for changes if needed. If you commit and push changes to the same branch, the PR updates automatically.
 
-## Motorda bir şey eksikse
+## If something is missing from the engine
 
-`ctx` API'sinde ihtiyacın olan bir şey yoksa (ör. adaya özel müzik, okçuluk hedefleri, yüzülebilir su), adanın içinde motoru değiştirmeye çalışma. Ayrı bir issue aç ve neye neden ihtiyaç duyduğunu yaz. Motor değişikliği kendi PR'ında incelenir, adan ise onun üzerine kurulur.
+If the `ctx` API lacks something you need (e.g. island-specific music, archery targets, swimmable water), don't try to change the engine from inside your island. Open a separate issue and explain what you need and why. The engine change is reviewed in its own PR, and your island is then built on top of it.
 
-## Ada dışı katkılar
+## Contributions beyond islands
 
-Hata düzeltmeleri ve Lumière'e yönelik iyileştirmeler de memnuniyetle karşılanır. Önce bir issue aç, sonra küçük ve tek konulu bir PR gönder. Kod biçemi için çevredeki koda uy: iki boşluk girinti, tek tırnak, Türkçe yorumlar ve kısa değişken adları.
+Bug fixes and improvements to Lumière are welcome too. Open an issue first, then send a small PR focused on one thing. For code style, follow the surrounding code: two-space indentation, single quotes, Turkish comments and short variable names.

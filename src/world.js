@@ -14,6 +14,8 @@ import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectio
 import * as fflate from 'fflate';
 import { COURT_ZONES } from './court.js';
 import { ROYAL_ZONES } from './royal.js';
+import { PARIS_ZONES } from './paris.js';
+import { TERROIR_ZONES } from './terroir.js';
 import { createAtmosphere } from './atmosphere.js';
 import { LUMIERE_COAST } from './sea.js';
 import { doorway } from './doors.js';
@@ -257,7 +259,7 @@ const PARTERRES = [
 ];
 const colliders = {boxes:[], circles:[]};
 // Ek alanlar (haras, seralar, kış bahçesi) için ağaçsız bölgeler [x0, z0, x1, z1]
-const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES];
+const EXCLUDE = [[-165, -62, -76, 82], [-47, 26, -33, 58], [33, 26, 47, 58], [-30, 96, 30, 142], [50, 36, 172, 158], ...COURT_ZONES, ...ROYAL_ZONES, ...PARIS_ZONES, ...TERROIR_ZONES];
 const timeU = {value:0}, windU = {value:0.35};
 // Rüzgâr: yer değiştirme dünya uzayında uygulanır (örnekler rastgele dönük olsa da hepsi aynı yöne eğilir).
 // Rüzgâr yönünde ilerleyen esinti dalgaları çimen ve çiçeklerde "dalga" deseni oluşturur.

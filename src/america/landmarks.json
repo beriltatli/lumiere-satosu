@@ -1,0 +1,13 @@
+{
+  "_aciklama": "Odak noktaları (yerel koordinat, metre; dünya = (-600 + x, 1020 + z)). facing: 'welcome' (feribot rotasına döner), 'sun' (öğle güneşine bakar), ya da derece. approach: kamera bu yöne bakarak yaklaşır (derece; 0 = +z). cluster: aynı eksenel kümedekiler Poisson kuralından muaf.",
+  "mall": {"origin": [150, 40], "dir": [1, 0], "length": 110},
+  "landmarks": [
+    {"id": "liberty", "name": "Özgürlük Heykeli", "district": "ny", "pos": [370, -20], "height": 46, "facing": "welcome", "approach": -60, "viewRadius": 160},
+    {"id": "lincoln", "name": "Lincoln Anıtı", "district": "dc", "mall": 0, "height": 14, "facing": 90, "approach": -90, "viewRadius": 90, "cluster": "mall"},
+    {"id": "washington", "name": "Washington Anıtı", "district": "dc", "mall": 1, "height": 56, "facing": 0, "approach": 90, "viewRadius": 220, "cluster": "mall"},
+    {"id": "capitol", "name": "Kongre Binası", "district": "dc", "mall": 2, "height": 45, "facing": -90, "approach": 65, "viewRadius": 160, "cluster": "mall"},
+    {"id": "arch", "name": "Gateway Arch", "district": "stl", "pos": [12, -10], "height": 60, "facing": 0, "approach": -90, "viewRadius": 240},
+    {"id": "rushmore", "name": "Rushmore Dağı", "district": "rushmore", "pos": [-150, -150], "height": 52, "facing": "sun", "approach": "front", "viewRadius": 200},
+    {"id": "goldengate", "name": "Golden Gate Köprüsü", "district": "sf", "pos": [-336, -30], "height": 44, "facing": 0, "approach": 90, "viewRadius": 220}
+  ]
+}
