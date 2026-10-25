@@ -74,6 +74,7 @@ The browser opens `http://localhost:5173` automatically. For a production build 
 | V | First-person / third-person view while riding |
 | Drag the mouse · scroll wheel | Rotate · zoom the camera |
 | J or Tab | Quest journal |
+| M | Map (you can also click the minimap in the bottom right) |
 | Esc or P | Menu (sound, camera sensitivity, graphics quality, photo mode) |
 | Phone | Left thumb walks, right thumb turns the camera, buttons in the bottom right |
 
@@ -303,6 +304,10 @@ Board the ship **La Belle Étoile** at the end of Lumière's south pier (or talk
 **Hútòng Island** (`src/islands/hutong/`) is the first contributor island: a Beijing hutong quarter whose streets and siheyuan courtyard houses are laid out by an algorithm (door numbers included), the Temple of Heaven, a Five Elements pagoda puzzle, a Hakka tulou, the Silk Road market behind moon gates, a Jiangnan canal village with moon bridges and wupeng boats, the Bamboo Mist Inn in a bamboo sea, the Lóngjǐ rice terraces and misty Zhangjiajie pillars with a Taoist temple, a spiral cliff stair and rope bridges. At night hundreds of red lanterns light the streets and lotus lanterns drift on the water.
 
 To add your own island, see [CONTRIBUTING.md](CONTRIBUTING.md) (the step-by-step process) and [src/islands/ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md) (rules and API). A working example: [src/islands/_sablon/island.js](src/islands/_sablon/island.js).
+
+## Istanbul Bosphorus (anchored island)
+
+Northwest of Lumière, at about the same distance as Yùlóng, lies the **Istanbul Bosphorus**: a hand-laid, scaled-down Istanbul. Beyoğlu in the north (Galata Tower, İstiklal Avenue and its tram, Taksim, Dolmabahçe), the Historic Peninsula in the southwest (Sultanahmet, Hagia Sophia, Topkapı, the Grand Bazaar, Süleymaniye, Eminönü), and the Asian side in the east (Üsküdar, Salacak, the Maiden's Tower, Haydarpaşa). The Bosphorus and the Golden Horn run between the shores; you can walk across the Galata and Bosphorus bridges. Bay-windowed houses, tulips, plane trees, ferries and gulls; a simit seller, fishermen, a tea man, a guide, a boatman, an ice-cream seller and the shopkeepers of the Grand Bazaar. A small quest: pet the city's 12 cats. Reach it by flying with Pyra or aboard La Belle Étoile; the horn at the landing field in Kadıköy calls Pyra to ride. **Anchored islands** like this one, which set `at`, are always visible and can be flown to (see [ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md)).
 
 ## Atmosphere and lighting
 

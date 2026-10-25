@@ -47,6 +47,8 @@ camera.position.set(64, 32, 80);
 
 /* sky */
 const sky = new THREE.Sky(); sky.scale.setScalar(2500); scene.add(sky);
+// gökyüzü kutusu kamerayı izler: uzak adalarda (ör. konumlu İstanbul) kutunun dışına çıkılıp gökyüzü siyah görünmesin
+sky.frustumCulled = false; sky.onBeforeRender = (r, s2, cam) => { sky.position.copy(cam.position); sky.updateMatrixWorld(); };
 // Preetham gökyüzü ACES ile soluk kalıyor: açık havada doygunluğu artır, zeniti koyulaştır
 sky.material.uniforms.uSkySat = {value:1.6}; sky.material.uniforms.uSkyZenith = {value:0.72};
 sky.material.fragmentShader = 'uniform float uSkySat; uniform float uSkyZenith;\n' + sky.material.fragmentShader.replace('gl_FragColor = vec4( retColor, 1.0 );', `
@@ -818,6 +820,9 @@ const stars = new THREE.Points(starGeo, starMat); stars.renderOrder = -2; scene.
 const MOON_DIR = new THREE.Vector3(-0.5, 0.55, 0.65).normalize();
 const moonMat = new THREE.SpriteMaterial({map:dotTex, color:0xeef2ff, fog:false, transparent:true, opacity:0, depthWrite:false});
 const moon = new THREE.Sprite(moonMat); moon.position.copy(MOON_DIR).multiplyScalar(1100); moon.scale.setScalar(60); moon.renderOrder = -2; scene.add(moon);
+// yıldızlar ve ay da kamerayı izler (uzak adalarda gökyüzü yarım kalmasın)
+stars.frustumCulled = false; stars.onBeforeRender = (r, s2, cam) => { stars.position.copy(cam.position); stars.updateMatrixWorld(); };
+moon.onBeforeRender = (r, s2, cam) => { moon.position.copy(cam.position).addScaledVector(MOON_DIR, 1100); moon.updateMatrixWorld(); };
 
 const [cc, cg] = canvas(512, 512);
 for (let i = 0; i < 260; i++){

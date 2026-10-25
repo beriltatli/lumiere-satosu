@@ -8,6 +8,7 @@ This document explains how to write `src/islands/<island-id>/island.js`. For the
 - Folders that start with `_` (e.g. `_sablon`) are not loaded.
 - When the player reaches the ship **La Belle Étoile** at Lumière's south pier (or Captain Jean-Baptiste) and presses **E**, a list opens and they pick your island from it.
 - All contributor islands are built at the centre of the world (0, 0), but **only one island is visible at a time.** Sailing to an island hides the previous one. An island is built on its first visit, so it doesn't slow down the game's startup.
+- Exception: **anchored islands** that set `at` stay fixed at their own spot in the world, share Lumière's collision space, are always visible and are reached by flying with Pyra (the ship works too). They preload in idle time a few seconds after the game starts.
 - Every island has its own collision space (`ctx.C`), coast, ocean, pier, captain and ship. The pier, captain and ship are added automatically.
 - If `build(ctx)` throws an error, the game doesn't crash. The console shows `[ada] <id> kurulamadı` ("could not be built") and the player returns to Lumière. If code that runs every frame throws, the island's updates are stopped.
 
@@ -29,6 +30,8 @@ This document explains how to write `src/islands/<island-id>/island.js`. For the
 | `terrain` | | `{groundColor, sand, grass, shallow, deep, rocks, seed}`: colours (hex) for the grass, sand, shore grass, shallow and deep water, and the number of rocks. |
 | `harbor` | | Angle of the pier on the coast (radians, default 0, i.e. south). |
 | `pierLength` | | Length of the pier (m, default 46). |
+| `at` | | `{x, z}`: places the island at this point in the world (an **anchored island**). Like Lumière and Yùlóng it is always visible and can be flown to with Pyra the dragon. You still write your code in your own (0, 0)-centred coordinates; the engine offsets collision, interactions and markers. Pick a spot about 1.5 km from Lumière that leaves a ~500 m gap between shores (Istanbul: `{x:-980, z:-980}`, radius 470). |
+| `map` | | `{rings:() => [[[x, z], ...]], pins:[{name, x, z}]}`: the real coastline and place pins to draw on the minimap and the **M** map (in island coordinates). If omitted, a coast circle is drawn. |
 
 **Don't** give `cx`, `cz` or `fn` in `coast`: the island is always built at the centre.
 
@@ -78,6 +81,7 @@ coast:{
 | `ctx.room(spec)` | A building you can enter. Details below. |
 | `ctx.onUpdate(fn)` | Calls `fn(dt, t, hero)` every frame (only while the island is visible). |
 | `ctx.hero` | The player's position: `x`, `y`, `z` (read-only). |
+| `ctx.callDragon({x, z, yaw})` | Calls Pyra to this point (only meaningful on anchored islands, e.g. a horn at a landing field). The point must be open ground. |
 | `ctx.world`, `ctx.audio` | The engine itself. Only use these if you really need to. PRs that use them to change Lumière or global settings won't be accepted. |
 
 `build` can return an object:
