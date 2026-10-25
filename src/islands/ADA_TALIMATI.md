@@ -1,171 +1,171 @@
-# Ada talimatı: kurallar ve `ctx` API'si
+# Island guide: rules and the `ctx` API
 
-Bu belge `src/islands/<ada-kimligi>/island.js` dosyasının nasıl yazılacağını anlatır. Katkı süreci (fork, dal, PR) için kök dizindeki [CONTRIBUTING.md](../../CONTRIBUTING.md) dosyasına bak. En hızlı başlangıç, çalışan bir örnek olan [`_sablon/island.js`](_sablon/island.js) dosyasını kopyalamaktır.
+This document explains how to write `src/islands/<island-id>/island.js`. For the contribution process (fork, branch, PR), see [CONTRIBUTING.md](../../CONTRIBUTING.md) in the root directory. The fastest way to start is to copy [`_sablon/island.js`](_sablon/island.js), a working example.
 
-## Sistem nasıl çalışır?
+## How the system works
 
-- `src/islands/index.js` açılışta `src/islands/*/island.js` dosyalarını Vite ile kendiliğinden bulur. **Ana koda (`main.js`, `index.js` vb.) dokunman gerekmez.**
-- `_` ile başlayan klasörler (ör. `_sablon`) yüklenmez.
-- Oyuncu Lumière'in güney iskelesindeki **La Belle Étoile** gemisine (ya da Kaptan Jean-Baptiste'e) **E** ile gelince açılan listeden adanı seçer.
-- Bütün katkıcı adaları dünyanın merkezinde (0, 0) kurulur ama **aynı anda yalnız bir ada görünür.** Gemiyle gidilince önceki ada gizlenir. Ada ilk ziyarette kurulur, bu yüzden oyunun açılışını yavaşlatmaz.
-- Her adanın kendi çarpışma alanı (`ctx.C`), kıyısı, okyanusu, iskelesi, kaptanı ve gemisi vardır. İskele, kaptan ve gemi kendiliğinden eklenir.
-- `build(ctx)` bir hata fırlatırsa oyun çökmez. Konsola `[ada] <id> kurulamadı` yazılır ve oyuncu Lumière'e döner. Her kare çalışan kodda hata çıkarsa adanın güncellemeleri durdurulur.
+- At startup, `src/islands/index.js` finds the `src/islands/*/island.js` files on its own through Vite. **You don't need to touch the main code (`main.js`, `index.js` and so on).**
+- Folders that start with `_` (e.g. `_sablon`) are not loaded.
+- When the player reaches the ship **La Belle Étoile** at Lumière's south pier (or Captain Jean-Baptiste) and presses **E**, a list opens and they pick your island from it.
+- All contributor islands are built at the centre of the world (0, 0), but **only one island is visible at a time.** Sailing to an island hides the previous one. An island is built on its first visit, so it doesn't slow down the game's startup.
+- Every island has its own collision space (`ctx.C`), coast, ocean, pier, captain and ship. The pier, captain and ship are added automatically.
+- If `build(ctx)` throws an error, the game doesn't crash. The console shows `[ada] <id> kurulamadı` ("could not be built") and the player returns to Lumière. If code that runs every frame throws, the island's updates are stopped.
 
-## Tanım nesnesi
+## The definition object
 
-`island.js` dosyası `export default` ile tek bir nesne verir:
+`island.js` exports a single object with `export default`:
 
-| Alan | Zorunlu | Açıklama |
+| Field | Required | Description |
 |---|---|---|
-| `id` | evet | Klasör adıyla **aynı** olmalı. Küçük harf, rakam ve tire, 2–31 karakter, harfle başlar (ör. `venedik`, `kyoto-2`). `lumiere` kullanılamaz. |
-| `name` | evet | Görünen ad (ör. `'Venedik Lagünü'`). |
-| `build(ctx)` | evet | Adayı kuran işlev. Aşağıda ayrıntılı anlatılıyor. |
-| `theme` | | Kaptanın listesinde adın yanında çıkan kısa açıklama. |
-| `author` | | GitHub kullanıcı adın. |
-| `description` | | Görev günlüğündeki "keşif" görevinin ipucu metni. |
-| `order` | | Gemi listesindeki sıra (varsayılan 100, küçük olan önce gelir). |
-| `seed` | | Tohum (tam sayı). `ctx.rnd` ve kit bununla tohumlanır: aynı tohum her açılışta aynı adayı kurar. |
-| `coast` | | Kıyı çizgisi: `{radius, waves, flat, ripple, soft}`. Ayrıntısı aşağıda. |
-| `terrain` | | `{groundColor, sand, grass, shallow, deep, rocks, seed}`: çim, kum, kıyı otu, sığ ve derin su renkleri (hex), kaya sayısı. |
-| `harbor` | | İskelenin kıyıdaki açısı (radyan, varsayılan 0, yani güney). |
-| `pierLength` | | İskelenin boyu (m, varsayılan 46). |
+| `id` | yes | Must be the **same** as the folder name. Lowercase letters, digits and hyphens, 2–31 characters, starting with a letter (e.g. `venedik`, `kyoto-2`). `lumiere` is not allowed. |
+| `name` | yes | Display name (e.g. `'Venedik Lagünü'`). |
+| `build(ctx)` | yes | The function that builds the island. Described in detail below. |
+| `theme` | | Short description shown next to the name in the captain's list. |
+| `author` | | Your GitHub username. |
+| `description` | | Hint text for the "keşif" (exploration) quest in the journal. |
+| `order` | | Position in the ship's list (default 100; lower comes first). |
+| `seed` | | Seed (integer). `ctx.rnd` and the kit are seeded with it: the same seed builds the same island every time. |
+| `coast` | | Coastline: `{radius, waves, flat, ripple, soft}`. Details below. |
+| `terrain` | | `{groundColor, sand, grass, shallow, deep, rocks, seed}`: colours (hex) for the grass, sand, shore grass, shallow and deep water, and the number of rocks. |
+| `harbor` | | Angle of the pier on the coast (radians, default 0, i.e. south). |
+| `pierLength` | | Length of the pier (m, default 46). |
 
-`coast` alanında `cx`, `cz` ve `fn` **verme**: ada her zaman merkezde kurulur.
+**Don't** give `cx`, `cz` or `fn` in `coast`: the island is always built at the centre.
 
-## Koordinatlar ve ölçüler
+## Coordinates and units
 
-- Birim metre. **x doğu, z güney** (+z güneye bakar), y yukarı.
-- Açı `a = atan2(x, z)`: 0 güney, π/2 doğu, π kuzey, -π/2 batı. `harbor` ve kıyı açıları bu düzende.
-- Dönüş (`rotation.y`, `ry`): 0 iken nesnenin önü +z'ye (güneye) bakar.
-- Kıyı yarıçapı varsayılan 300 m'dir. Kumsal kıyıdan ~18 m içeride başlar. Bir noktanın karada mı olduğunu `ctx.coast.dist(x, z)` ile anlarsın: değer **negatifse karada**, pozitifse denizdedir. Yapıları `dist < -25` olan yerlere koy.
-- Oyuncu iskelenin ucunda karaya dönük başlar (`ctx.harbor`).
-- Zemin düzdür (y = 0). Tepe istiyorsan kendi geometrini yap ve yüksekliği `ctx.C.heightFns` ile bildir (aşağıda).
+- The unit is the metre. **x is east, z is south** (+z points south), y is up.
+- Angle `a = atan2(x, z)`: 0 is south, π/2 east, π north, -π/2 west. `harbor` and coast angles follow this convention.
+- Rotation (`rotation.y`, `ry`): at 0, the front of an object faces +z (south).
+- The default coast radius is 300 m. The beach starts ~18 m inland from the shoreline. Use `ctx.coast.dist(x, z)` to tell whether a point is on land: a **negative value means land**, positive means sea. Place buildings where `dist < -25`.
+- The player starts at the end of the pier, facing the land (`ctx.harbor`).
+- The ground is flat (y = 0). If you want hills, make your own geometry and report the height through `ctx.C.heightFns` (see below).
 
-### `coast` biçimi
+### The `coast` shape
 
 ```js
 coast:{
-  radius:260,                        // ortalama yarıçap (m)
-  waves:[[3, 18, 0.4], [5, 8, 1.7]], // [n, genlik, faz]: büyük girinti ve çıkıntılar; n tam sayı olmalı
-  ripple:[[11, 3, 0.2]],             // küçük dalgalanmalar
-  flat:{angle:0, dist:220},          // isteğe bağlı: o yönde düz bir kumsal
+  radius:260,                        // mean radius (m)
+  waves:[[3, 18, 0.4], [5, 8, 1.7]], // [n, amplitude, phase]: large bays and headlands; n must be an integer
+  ripple:[[11, 3, 0.2]],             // small ripples
+  flat:{angle:0, dist:220},          // optional: a straight beach in that direction
 }
 ```
 
-## `ctx`: `build(ctx)` içinde kullanabileceklerin
+## `ctx`: what you can use inside `build(ctx)`
 
-| Ad | Açıklama |
+| Name | Description |
 |---|---|
-| `ctx.THREE` | three.js (r147). Kendin `import * as THREE` yapma, bunu kullan. |
-| `ctx.root` | Adanın içerik grubu. Eklediğin her şey bunun altına girer (`kit` zaten buraya ekler). |
-| `ctx.kit` | Yapı kiti (`src/kit.js`). Ayrıntısı aşağıda. |
-| `ctx.C` | Adanın çarpışma alanı (`src/game/collision.js`). |
-| `ctx.coast` | Kıyı: `dist(x, z)`, `point(açı, kıyıdanUzaklık)` → `[x, z]`, `R(açı)`, `radius`. |
-| `ctx.harbor` | `{x, z, angle, yaw}`: iskelenin ucu ve açısı. |
-| `ctx.rnd()` | Tohumlu rastgele sayı (0–1). `Math.random()` yerine bunu kullan ki ada her açılışta aynı kurulsun. |
-| `ctx.materials` | Dünyanın paylaşılan malzemeleri (`stoneMat`, `marbleMat`, `goldMat`, `gravelMat`, `slateMat`, `lawnMat`…). **Bunları değiştirme**, gerekirse `.clone()` ile kopyala. |
-| `ctx.W` | O anki hava: `W.night` (0–1), `W.rain` (0–1), `W.clouds`, `W.elev` (güneş yüksekliği) gibi alanlar içerir. |
-| `ctx.wind` | Rüzgâr gücü (~0.2–1.2). |
-| `ctx.ui.say(ad, metin)` | Tek satırlık konuşma. Bir Promise döndürür. |
-| `ctx.ui.dialog(satırlar)` | `[{name, text, choices?}]`. `choices` verilirse seçilen sıranın numarasıyla çözülür (Promise). |
-| `ctx.ui.toast(metin, ms)` | Kısa bildirim. |
-| `ctx.sfx(ad)` | Ses efekti: `coin`, `quest`, `rune`, `open`, `wrong`, `blip`, `bell`, `gong`, `chime`, `drum`, `wood`, `whoosh`, `whistle`, `roar`. |
-| `ctx.store` | Adana ait, **kayda yazılan** nesne. Yalnız JSON'a çevrilebilen değerler koy (sayı, metin, dizi, düz nesne). |
-| `ctx.save()` | Kaydı hemen yazar (görev adımlarından sonra çağır). |
-| `ctx.interact(x, z, etiket, işlev, r = 2.4, göster = () => true)` | **E** ile tetiklenen etkileşim. `göster()` false döndürürse etkileşim gizlenir. |
-| `ctx.marker({id, label, x, z, color, minor, show})` | Pusula işareti. `show()` false olunca görünmez. `minor: true` küçük işaret demektir. |
-| `ctx.place({id, name, x, z, r})` | Keşfedilecek yer. Oyuncu `r` (varsayılan 14 m) içine girince "Keşfedildi" bildirimi çıkar ve kaydedilir. En yakın ikisi pusulada görünür. Görev günlüğüne "<Ada>: keşif" görevi kendiliğinden eklenir. |
-| `ctx.room(spec)` | İçine girilebilen bina. Ayrıntısı aşağıda. |
-| `ctx.onUpdate(fn)` | Her karede `fn(dt, t, hero)` çağrılır (yalnız ada görünürken). |
-| `ctx.hero` | Oyuncunun konumu: `x`, `y`, `z` (salt okunur). |
-| `ctx.world`, `ctx.audio` | Motorun kendisi. Yalnız gerçekten gerekirse kullan. Bunlarla Lumière'i ya da genel ayarları değiştiren PR kabul edilmez. |
+| `ctx.THREE` | three.js (r147). Don't `import * as THREE` yourself; use this. |
+| `ctx.root` | The island's content group. Everything you add goes under it (`kit` already adds things here). |
+| `ctx.kit` | The building kit (`src/kit.js`). Details below. |
+| `ctx.C` | The island's collision space (`src/game/collision.js`). |
+| `ctx.coast` | The coast: `dist(x, z)`, `point(angle, distanceFromShore)` → `[x, z]`, `R(angle)`, `radius`. |
+| `ctx.harbor` | `{x, z, angle, yaw}`: the end of the pier and its angle. |
+| `ctx.rnd()` | Seeded random number (0–1). Use it instead of `Math.random()` so the island is built the same way every time. |
+| `ctx.materials` | The world's shared materials (`stoneMat`, `marbleMat`, `goldMat`, `gravelMat`, `slateMat`, `lawnMat`…). **Don't modify them**; copy them with `.clone()` if you need to. |
+| `ctx.W` | The current weather: fields such as `W.night` (0–1), `W.rain` (0–1), `W.clouds` and `W.elev` (sun elevation). |
+| `ctx.wind` | Wind strength (~0.2–1.2). |
+| `ctx.ui.say(name, text)` | A single line of speech. Returns a Promise. |
+| `ctx.ui.dialog(lines)` | `[{name, text, choices?}]`. If `choices` is given, the Promise resolves with the index of the chosen option. |
+| `ctx.ui.toast(text, ms)` | A short notification. |
+| `ctx.sfx(name)` | Sound effect: `coin`, `quest`, `rune`, `open`, `wrong`, `blip`, `bell`, `gong`, `chime`, `drum`, `wood`, `whoosh`, `whistle`, `roar`. |
+| `ctx.store` | An object that belongs to your island and is **written to the save**. Only put JSON-serialisable values in it (numbers, strings, arrays, plain objects). |
+| `ctx.save()` | Writes the save immediately (call it after quest steps). |
+| `ctx.interact(x, z, label, fn, r = 2.4, show = () => true)` | An interaction triggered with **E**. If `show()` returns false, the interaction is hidden. |
+| `ctx.marker({id, label, x, z, color, minor, show})` | A compass marker. It's hidden while `show()` is false. `minor: true` makes it a small marker. |
+| `ctx.place({id, name, x, z, r})` | A place to discover. When the player comes within `r` (default 14 m), a "Keşfedildi" (Discovered) notification appears and the place is saved. The nearest two show on the compass. The "<Island>: keşif" quest is added to the journal automatically. |
+| `ctx.room(spec)` | A building you can enter. Details below. |
+| `ctx.onUpdate(fn)` | Calls `fn(dt, t, hero)` every frame (only while the island is visible). |
+| `ctx.hero` | The player's position: `x`, `y`, `z` (read-only). |
+| `ctx.world`, `ctx.audio` | The engine itself. Only use these if you really need to. PRs that use them to change Lumière or global settings won't be accepted. |
 
-`build` bir nesne döndürebilir:
+`build` can return an object:
 
-- `update(dt, t, hero)`: her kare çağrılır (`ctx.onUpdate` ile aynı iş).
-- `keepUnbaked: true`: kitin birleştirme adımını kapatır. Yalnız hata ayıklarken kullan.
+- `update(dt, t, hero)`: called every frame (same job as `ctx.onUpdate`).
+- `keepUnbaked: true`: turns off the kit's merge step. Only use it while debugging.
 
-## Yapı kiti (`ctx.kit`)
+## The building kit (`ctx.kit`)
 
-Kit, `src/kit.js` dosyasında. En çok kullanılanlar:
+The kit lives in `src/kit.js`. The most used parts:
 
-| İşlev | Açıklama |
+| Function | Description |
 |---|---|
-| `add(geo, mat, x, y, z, parent = root, gölge = true)` | Mesh ekler ve döndürür. |
-| `mat(renk, seçenekler)` | Önbellekli `MeshStandardMaterial`. Aynı renk aynı malzemeyi döndürür, bu da daha az çizim çağrısı demek. |
-| `plane(w, d, mat, x, y, z, rot)` · `disc(r, mat, x, y, z)` | Zemin kaplaması (yol, meydan). Zeminle çakışmasın diye y = 0.01–0.03 ver. |
-| `hall({x, z, w, d, h, rot, wall, roof, roofMat, roofH, door, doorW, doorStyle, winRows, collide})` | Dikdörtgen bina: pencereler, çatı (`'mansard'`, `'gable'`, `'flat'`), kapı ve çarpışma. Kapı yerel +z yüzündedir. `{G, front}` döndürür; `front` kapının 1.6 m önündeki `[x, z]` noktasıdır. |
-| `column(x, z, h, r)` · `statue(x, z, çeşit 0–5, ry, ölçek, ad, metin)` | Sütun ve heykel. Heykele ad ve metin verilirse konuşulabilir olur. |
-| `signPost(metin, x, z, ry)` · `signBoard(metin, x, y, z, ry, w)` | Tabela. |
-| `npc({coat, hat, apron, chef, trim})` · `lady(elbiseRengi, saçRengi)` | Figür (Grup) döndürür. |
-| `placeNPC(figür, x, z, ry, ad, işlev)` | Figürü yerleştirir: oyuncu yaklaşınca ona döner, "Konuş: <ad>" etkileşimi ve çarpışma ekler. |
-| `canvas(w, h)` · `ctex(canvas, rx, ry)` | Kodla doku üretmek için tuval ve doku. |
-| `lathe(noktalar)` · `frustum` · `gableGeo` | Geometri yardımcıları. |
-| `stone`, `marble`, `gold`, `gravel`, `slate`, `cream`, `plaster`, `wood`, `darkWood`, `grass`, `lampMat` | Hazır malzemeler. |
+| `add(geo, mat, x, y, z, parent = root, shadow = true)` | Adds a mesh and returns it. |
+| `mat(color, options)` | A cached `MeshStandardMaterial`. The same colour returns the same material, which means fewer draw calls. |
+| `plane(w, d, mat, x, y, z, rot)` · `disc(r, mat, x, y, z)` | Ground cover (paths, squares). Give y = 0.01–0.03 so it doesn't overlap the ground. |
+| `hall({x, z, w, d, h, rot, wall, roof, roofMat, roofH, door, doorW, doorStyle, winRows, collide})` | A rectangular building: windows, roof (`'mansard'`, `'gable'`, `'flat'`), door and collision. The door is on the local +z face. Returns `{G, front}`; `front` is the `[x, z]` point 1.6 m in front of the door. |
+| `column(x, z, h, r)` · `statue(x, z, variant 0–5, ry, scale, name, text)` | Column and statue. Give a statue a name and text and the player can talk to it. |
+| `signPost(text, x, z, ry)` · `signBoard(text, x, y, z, ry, w)` | Signs. |
+| `npc({coat, hat, apron, chef, trim})` · `lady(dressColor, hairColor)` | Returns a figure (Group). |
+| `placeNPC(figure, x, z, ry, name, fn)` | Places a figure: it turns towards the player when they come close, and gets a "Konuş: <name>" (Talk) interaction and collision. |
+| `canvas(w, h)` · `ctex(canvas, rx, ry)` | A canvas and texture for generating textures in code. |
+| `lathe(points)` · `frustum` · `gableGeo` | Geometry helpers. |
+| `stone`, `marble`, `gold`, `gravel`, `slate`, `cream`, `plaster`, `wood`, `darkWood`, `grass`, `lampMat` | Ready-made materials. |
 
-**Renkler:** hex renkleri olduğu gibi (sRGB) yaz. `build` bittikten sonra adadaki bütün malzemelerin renkleri bir kez doğrusal düzene çevrilir. Bu yüzden `build` bittikten **sonra** oluşturduğun malzemelerin rengini kendin çevirmen gerekir (`color.convertSRGBToLinear()`).
+**Colours:** write hex colours as they are (sRGB). After `build` finishes, the colours of all materials on the island are converted to linear once. So for materials you create **after** `build` finishes, you have to convert the colour yourself (`color.convertSRGBToLinear()`).
 
-**Birleştirme (bake):** `build` bittikten sonra kit, aynı malzemeli sabit mesh'leri birleştirir. Böylece binlerce parça birkaç çizim çağrısına iner. Sonuç olarak:
+**Merging (bake):** after `build` finishes, the kit merges static meshes that share a material. This brings thousands of parts down to a few draw calls. As a result:
 
-- Sonradan **hareket edecek, dönecek ya da gizlenecek** bir grubu `group.userData.dyn = true` ile işaretle. Grubun içi kendi içinde birleşir ama grup yerinde kalır ve döndürülebilir (örnek: şablondaki yel değirmeni).
-- Tek başına gizlenecek ya da değişecek bir mesh için `mesh.userData.keep = true` kullan (örnek: şablondaki fener).
-- `InstancedMesh` birleştirilmez. Ağaç, çit, taş gibi yüzlerce kez tekrar eden şeyler için onu kullan.
+- Mark a group that will **move, rotate or be hidden** later with `group.userData.dyn = true`. Its contents are merged among themselves, but the group stays in place and can be rotated (example: the windmill in the template).
+- For a single mesh that will be hidden or changed on its own, use `mesh.userData.keep = true` (example: the lantern in the template).
+- `InstancedMesh` is not merged. Use it for things repeated hundreds of times, such as trees, fences and stones.
 
-## Çarpışma (`ctx.C`)
+## Collision (`ctx.C`)
 
-Oyuncu yalnız senin tanımladığın engellere çarpar. **Görünen her katı nesneye bir çarpışma şekli ekle.**
+The player only collides with obstacles you define. **Add a collision shape to every visible solid object.**
 
 ```js
-ctx.C.circle(x, z, r);                 // daire (ağaç gövdesi, sütun, fıskiye)
-ctx.C.box(x, z, yarıGenişlik, yarıDerinlik, ry); // döndürülmüş kutu (duvar, bina)
-ctx.C.rect(x0, z0, x1, z1);            // eksen hizalı kutu
-const o = ctx.C.box(...); o.y0 = 2; o.y1 = 5; // yalnız bu yükseklik aralığında engel (köprü altı, balkon)
-o.low = true;                          // kamera bu engeli yok saysın (alçak çit)
+ctx.C.circle(x, z, r);                 // circle (tree trunk, column, fountain)
+ctx.C.box(x, z, halfWidth, halfDepth, ry); // rotated box (wall, building)
+ctx.C.rect(x0, z0, x1, z1);            // axis-aligned box
+const o = ctx.C.box(...); o.y0 = 2; o.y1 = 5; // obstacle only within this height range (under a bridge, a balcony)
+o.low = true;                          // the camera ignores this obstacle (low fence)
 ```
 
-Basılabilir yüzey (merdiven, teras, köprü, tepe) eklemek için:
+To add a walkable surface (stairs, terrace, bridge, hill):
 
 ```js
-ctx.C.heightFns.push((x, z) => (Math.abs(x) < 10 && z > 0 && z < 20) ? 1.2 : null); // null: burada yüzey yok
+ctx.C.heightFns.push((x, z) => (Math.abs(x) < 10 && z > 0 && z < 20) ? 1.2 : null); // null: no surface here
 ```
 
-Oyuncu 0.6 m'ye kadar olan basamakları çıkar. Daha yüksek bir yüzeye merdivenle (art arda artan yükseklik) çıkılır. Kıyıdan öteye yürüme engeli kendiliğinden kurulur.
+The player climbs steps of up to 0.6 m. Higher surfaces are reached by stairs (heights that rise step by step). The barrier that stops the player walking past the shoreline is added automatically.
 
-## İçine girilen binalar (`ctx.room`)
+## Buildings you can enter (`ctx.room`)
 
 ```js
 const inn = kit.hall({x:0, z:38, w:16, d:10, h:6, roof:'gable'});
 ctx.room({
-  id:'han', name:'Yolcu hanı',
-  door:{x:inn.front[0], z:inn.front[1], ry:0},  // dışarıdaki giriş noktası; ry: kapıdan dışarı bakış (binanın rot değeri)
-  w:12, d:9, h:4.4,                             // iç ölçüler; giriş kapısı odanın yerel +z duvarında
+  id:'han', name:'Yolcu hanı',                  // "Travellers' inn"
+  door:{x:inn.front[0], z:inn.front[1], ry:0},  // entry point outside; ry: the direction facing out of the door (the building's rot value)
+  w:12, d:9, h:4.4,                             // interior size; the entrance is on the room's local +z wall
   floor:'ahsap', walls:'ahsap', ceiling:'kiris', lights:2,
-  decor(R){ R.table(0, -1); R.npc(0, -4, 0, 'Hancı', ['Hoş geldin!']); },
+  decor(R){ R.table(0, -1); R.npc(0, -4, 0, 'Hancı', ['Hoş geldin!']); },  // "Innkeeper", "Welcome!"
 });
 ```
 
-- `floor`: `parke`, `mermer`, `tas`, `ahsap`, `toprak`, `mozaik`, `tatami`
-- `walls`: `saray`, `alci`, `tas`, `ahsap`, `tugla`, `mermer`, `shoji`
-- `ceiling`: `alci`, `boyali`, `kiris`, `tonoz`
-- Ayrıca: `wallColor`, `curtain`, `windows`, `lamp: 'avize' | 'fener'`, `plain: true`
+- `floor`: `parke` (parquet), `mermer` (marble), `tas` (stone), `ahsap` (wood), `toprak` (earth), `mozaik` (mosaic), `tatami`
+- `walls`: `saray` (palace), `alci` (plaster), `tas` (stone), `ahsap` (wood), `tugla` (brick), `mermer` (marble), `shoji`
+- `ceiling`: `alci` (plaster), `boyali` (painted), `kiris` (beams), `tonoz` (vault)
+- Also: `wallColor`, `curtain`, `windows`, `lamp: 'avize' | 'fener'` (chandelier | lantern), `plain: true`
 
-Oda ilk girişte kurulur. `decor(R)` içindeki koordinatlar odanın merkezine göredir (+z giriş duvarı). Kullanabileceğin mobilya kitinin (`R`) tamamı `src/rooms.js` içindeki `kit()` işlevinde. Başlıcaları: `table`, `chair`, `dining`, `bench`, `bookcase`, `cabinet`, `counter`, `barrel`, `crate`, `rug`, `painting`, `mirror`, `chandelier`, `lantern`, `candles`, `fireplace`, `plant`, `bust`, `globe`, `shelf`, `loom`, `vitrine`, `pool`, `stage`, `seats`, `npc(x, z, ry, ad, satırlar)`, `note(x, z, etiket, ad, satırlar)`, `interact(x, z, etiket, işlev)`, `collide(x, z, hw, hd, ry)`, `anim(fn)`, `light(...)`.
+The room is built the first time the player enters. Coordinates inside `decor(R)` are relative to the centre of the room (+z is the entrance wall). The full furniture kit (`R`) is in the `kit()` function in `src/rooms.js`. The main pieces: `table`, `chair`, `dining`, `bench`, `bookcase`, `cabinet`, `counter`, `barrel`, `crate`, `rug`, `painting`, `mirror`, `chandelier`, `lantern`, `candles`, `fireplace`, `plant`, `bust`, `globe`, `shelf`, `loom`, `vitrine`, `pool`, `stage`, `seats`, `npc(x, z, ry, name, lines)`, `note(x, z, label, name, lines)`, `interact(x, z, label, fn)`, `collide(x, z, hw, hd, ry)`, `anim(fn)`, `light(...)`.
 
-## Kayıt ve görevler
+## Save and quests
 
-- Kayıtta adana ait iki şey tutulur: `found` (keşfedilen yerlerin kimlikleri) ve `ctx.store`.
-- Görev durumunu `ctx.store` içinde tut (ör. `store.lantern = 'kayip' | 'bulundu' | 'teslim'`). Değiştirdikten sonra `ctx.save()` çağır.
-- `build` her oyun açılışında yeniden çalışır. Bu yüzden görünümü `store` değerine göre kur (ör. fener daha önce alındıysa gizli başlasın).
-- **Lumière'in kaydına** (`runes`, `coins`, `notes`, `china`…) dokunma.
+- The save keeps two things for your island: `found` (the ids of discovered places) and `ctx.store`.
+- Keep quest state in `ctx.store` (e.g. `store.lantern = 'kayip' | 'bulundu' | 'teslim'`, i.e. lost, found, delivered). Call `ctx.save()` after changing it.
+- `build` runs again every time the game starts. So set up the scene from the `store` values (e.g. if the lantern has already been picked up, it should start hidden).
+- Don't touch **Lumière's save** (`runes`, `coins`, `notes`, `china`…).
 
-## Kurallar (PR kontrol listesi)
+## Rules (PR checklist)
 
-1. **Yalnız kendi klasörün:** değişiklikler `src/islands/<id>/` içinde olmalı. Motorda bir eksik varsa ayrı bir issue ya da PR aç.
-2. **Dış dosya yok:** model, doku ve ses dahil her şey kodla üretilmeli (projenin geri kalanı da böyle yazıldı). Çok gerekliyse önce bir issue aç; lisansı CC0 olmayan kaynak kabul edilmez.
-3. **Bağımlılık yok:** `package.json` değişmez. Yalnız `ctx.THREE` ve three.js'in `examples/jsm` modülleri kullanılabilir.
-4. **Performans:** adan Orta kalitede, sıradan bir dizüstünde 60 fps'e yakın kalmalı. Kabaca sınırlar: birleştirme sonrası 300'den az çizim çağrısı (`renderer.info.render.calls`), 1,5 milyondan az üçgen. Tekrarlanan nesnelerde `InstancedMesh` kullan. Dinamik ışık (PointLight) en fazla 4 olsun. Her kare çalışan kodda yeni nesne (`new Vector3`, dizi) üretme.
-5. **Kodla üretilen dokular küçük olsun:** tuval en fazla 512×512, mümkünse 256.
-6. **Metinler Türkçe:** diyaloglar, tabelalar ve yer adları Türkçe olmalı. Özel adlar özgün dilinde kalabilir.
-7. **İçerik:** saygılı ve her yaşa uygun olmalı. Gerçek kişileri hedef alan ya da marka logosu taşıyan içerik kabul edilmez.
-8. **Konsol temiz:** adayı kurarken ve gezerken konsolda hata ya da uyarı çıkmamalı.
-9. **`npm run build` hatasız tamamlanmalı.**
+1. **Only your own folder:** changes must be inside `src/islands/<id>/`. If the engine is missing something, open a separate issue or PR.
+2. **No external files:** everything, including models, textures and sounds, must be generated in code (the rest of the project was written this way too). If you really need one, open an issue first; assets that aren't licensed CC0 won't be accepted.
+3. **No dependencies:** `package.json` doesn't change. Only `ctx.THREE` and three.js's `examples/jsm` modules may be used.
+4. **Performance:** your island should stay close to 60 fps at Medium quality on an ordinary laptop. Rough limits: fewer than 300 draw calls after merging (`renderer.info.render.calls`) and fewer than 1.5 million triangles. Use `InstancedMesh` for repeated objects. Use at most 4 dynamic lights (PointLight). Don't create new objects (`new Vector3`, arrays) in code that runs every frame.
+5. **Keep generated textures small:** canvases of at most 512×512, 256 if possible.
+6. **Text in Turkish:** dialogue, signs and place names must be in Turkish. Proper names can stay in their original language.
+7. **Content:** it must be respectful and suitable for all ages. Content that targets real people or carries brand logos won't be accepted.
+8. **Clean console:** no errors or warnings in the console while the island is being built and explored.
+9. **`npm run build` must complete without errors.**

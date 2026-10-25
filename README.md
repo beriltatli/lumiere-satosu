@@ -302,7 +302,7 @@ Board the ship **La Belle Étoile** at the end of Lumière's south pier (or talk
 
 **Hútòng Island** (`src/islands/hutong/`) is the first contributor island: a Beijing hutong quarter whose streets and siheyuan courtyard houses are laid out by an algorithm (door numbers included), the Temple of Heaven, a Five Elements pagoda puzzle, a Hakka tulou, the Silk Road market behind moon gates, a Jiangnan canal village with moon bridges and wupeng boats, the Bamboo Mist Inn in a bamboo sea, the Lóngjǐ rice terraces and misty Zhangjiajie pillars with a Taoist temple, a spiral cliff stair and rope bridges. At night hundreds of red lanterns light the streets and lotus lanterns drift on the water.
 
-To add your own island, see [CONTRIBUTING.md](CONTRIBUTING.md) (the step-by-step process) and [src/islands/ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md) (rules and API). A working example: [src/islands/_sablon/island.js](src/islands/_sablon/island.js). These guides are currently written in Turkish.
+To add your own island, see [CONTRIBUTING.md](CONTRIBUTING.md) (the step-by-step process) and [src/islands/ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md) (rules and API). A working example: [src/islands/_sablon/island.js](src/islands/_sablon/island.js).
 
 ## Atmosphere and lighting
 
