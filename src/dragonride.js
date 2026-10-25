@@ -3,6 +3,7 @@
 import { PLACES } from './court.js';
 import { CAGE } from './sanctuary.js';
 import { CHINA, CHINA_PLACES, onChina } from './china.js';
+import { ANCHORED, anchoredAt } from './islands/index.js';
 
 // Malikânenin ana yerleri (saray bahçeleri listesi PLACES'ten gelir)
 const CORE = [
@@ -16,6 +17,13 @@ const CORE = [
   {name:'Cennet Bağı', sub:'Asmalar ve pergola', x:136, z:122},
   {name:'Çit Labirenti', sub:'Zümrüt rünün saklandığı yer', x:74, z:8},
 ];
+// uçuş sınırı: Lumière + Yùlóng; konumlu adalar (at) varsa hepsini kapsayan daire
+const FLY = (() => {
+  if (!ANCHORED.length) return {mx:CHINA.x / 2, mz:(10 + CHINA.z) / 2, RB:Math.hypot(CHINA.x, CHINA.z - 10) / 2 + 820};
+  const P = [[0, 10], [CHINA.x, CHINA.z], ...ANCHORED.map(d => [d.at.x, d.at.z])];
+  const mx = P.reduce((s, p) => s + p[0], 0) / P.length, mz = P.reduce((s, p) => s + p[1], 0) / P.length;
+  return {mx, mz, RB:Math.max(...P.map(p => Math.hypot(p[0] - mx, p[1] - mz))) + 700};
+})();
 const subOf = p => p.z < -60 ? 'Kültür Mahallesi' : p.x < -90 ? 'Batı Arazisi' : p.x > 100 ? 'Doğu Arazisi' : p.z > 130 ? 'Güney Girişi' : 'Saray Bahçeleri';
 
 export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, hooks}){
@@ -24,12 +32,17 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
   const $ = id => document.getElementById(id);
   const L = (x, y, z) => new THREE.Vector3(x, y, z);
   const st = {active:false, pos:L(0, 0, 0), yaw:0, pitch:0, roll:0, speed:0, vy:0, grounded:true, cam:'binici', phase:0, flapLast:0, title:null, titleT:0, fire:0, home:null, fov:0, yawRate:0, typed:'', flameMode:false, burst:0};
-  const places = () => CORE.concat(PLACES.filter(p => p.r > 0).map(p => ({name:p.name, sub:subOf(p), x:p.x, z:p.z})), CHINA_PLACES, [{name:CHINA.name, sub:CHINA.sub, x:CHINA.x, z:CHINA.z - 300}]);
+  const places = () => CORE.concat(PLACES.filter(p => p.r > 0).map(p => ({name:p.name, sub:subOf(p), x:p.x, z:p.z})), CHINA_PLACES, [{name:CHINA.name, sub:CHINA.sub, x:CHINA.x, z:CHINA.z - 300}], ANCHORED.map(d => ({name:d.name, sub:d.theme || '', x:d.at.x, z:d.at.z})));
   const camPos = L(0, 0, 0), camLook = L(0, 0, 0), tmp = L(0, 0, 0), fwd = L(0, 0, 1);
   const RIDER = L(0, 1.15, 0.85);       // gövde (body) yerel koordinatında eyer
 
   // kafes kapısının yanında: Pyra'ya bin
-  sanctuary.interact.push({x:CAGE.x - CAGE.R - 1.2, z:CAGE.z + 3.2, r:2.8, label:'Pyra\'ya bin ve uç', show:() => !st.active, act:() => start()});
+  sanctuary.interact.push({x:CAGE.x - CAGE.R - 1.2, z:CAGE.z + 3.2, r:2.8, label:'Pyra\'ya bin ve uç', show:() => !st.active && !st.parked, act:() => start()});
+  // indiği yerde bekleyen Pyra: yanına gidip yeniden binilir; kafesten de geri çağrılabilir
+  sanctuary.interact.push({get x(){ return st.pos.x; }, get z(){ return st.pos.z; }, r:5.2, label:'Pyra\'ya bin ve uç', show:() => !st.active && st.parked && D.root.visible, act:() => start()});
+  sanctuary.interact.push({x:CAGE.x - CAGE.R - 1.2, z:CAGE.z + 3.2, r:2.8, label:'Pyra\'yı kafesine çağır', show:() => !st.active && st.parked,
+    act:() => ui.fade(() => goHome()).then(() => ui.toast('Pyra kanat çırparak kafesine döndü', 2200))});
+  C.dynamics.push(() => st.parked && D.root.visible ? [{x:st.pos.x, z:st.pos.z, r:2.4}] : []);
 
   // Gizli: uçarken klavyeden yazılan harfleri izle; "fire" yazılınca tıklayarak alev püskürtme açılır/kapanır.
   addEventListener('keydown', e => {
@@ -52,10 +65,14 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     if (st.active) return;
     await ui.fade(() => {
       if (hero.mounted) hero.dismount();
-      // ejderhayı kafesten çıkar: kapının önünde, batıya bakarak bekler
-      st.home = {parent:D.root.parent, pos:D.root.position.clone(), rot:D.root.rotation.clone(), scale:D.root.scale.clone()};
-      scene.attach(D.root); D.root.rotation.order = 'YXZ';
-      st.pos.set(CAGE.x - CAGE.R - 9, 0, CAGE.z + 0.5); st.yaw = -Math.PI / 2; st.pitch = 0; st.roll = 0; st.speed = 0; st.vy = 0; st.grounded = true; st.mt = 0; st.mp = 0;
+      if (!st.parked){
+        // ejderhayı kafesten çıkar: kapının önünde, batıya bakarak bekler
+        st.home = {parent:D.root.parent, pos:D.root.position.clone(), rot:D.root.rotation.clone(), scale:D.root.scale.clone()};
+        scene.attach(D.root); D.root.rotation.order = 'YXZ';
+        st.pos.set(CAGE.x - CAGE.R - 9, 0, CAGE.z + 0.5); st.yaw = -Math.PI / 2;
+      }
+      st.parked = false; D.root.visible = true;
+      st.pitch = 0; st.roll = 0; st.speed = 0; st.vy = 0; st.grounded = true; st.mt = 0; st.mp = 0;
       if (at && at.x != null){ st.pos.set(at.x, C.height(at.x, at.z), at.z); st.yaw = at.yaw ?? 0; }
       st.takeoff = {x:st.pos.x, z:st.pos.z};
       D.root.userData.shared = true;
@@ -75,24 +92,35 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
   }
   async function stop(){
     if (!st.active) return;
+    let home = false;
     await ui.fade(() => {
-      // oyuncu ejderhanın altındaki zemine iner
-      const p = {x:st.pos.x, z:st.pos.z};
+      // Pyra indiği yerde (deniz üstündeyse kıyıda) bekler; oyuncu sol yanına iner
+      const d = {x:st.pos.x, z:st.pos.z};
+      if (C.bound) C.bound(d);
+      C.resolve(d, 2.2, 0);
+      st.pos.set(d.x, Math.max(0, C.height(d.x, d.z)), d.z);
+      const p = {x:st.pos.x + Math.cos(st.yaw) * 4, z:st.pos.z - Math.sin(st.yaw) * 4};
       C.resolve(p, 0.6, 0);
-      if (C.bound) C.bound(p);   // deniz üstünde inilirse kıyıya
+      if (C.bound) C.bound(p);
       scene.add(hero.obj); hero.obj.visible = true; const u = hero.obj.userData;
       u.legL.rotation.set(0, 0, 0); u.legR.rotation.set(0, 0, 0); u.armL.rotation.x = 0; u.armR.rotation.x = 0;
       hero.zone = null; hero.teleport(p.x, C.height(p.x, p.z), p.z, st.yaw); hero.camDistT = 7.5; hero.camPitch = 0.3; hero.snapCamera = true;
-      // Pyra kafesine döner
       D.riding = false; D.roar = 0; D.vel = null; D.fireBoost = 1; D.fireDir = null; D.fire.material.size = 0.9;
-      st.home.parent.attach(D.root); D.root.position.copy(st.home.pos); D.root.rotation.copy(st.home.rot); D.root.scale.copy(st.home.scale); D.root.userData.shared = false;
       if (hooks.landed) hooks.landed(st.takeoff, p);
-      st.awayFromCage = onChina(p.x, p.z);
       D.legs.forEach(l => { l.rotation.x = 0; });
+      // kafesin hemen yanına inildiyse içeri girer, değilse orada bekler
+      home = Math.hypot(st.pos.x - CAGE.x, st.pos.z - CAGE.z) < CAGE.R + 22;
+      if (home) goHome();
+      else { st.parked = true; st.pitch = 0; st.roll = 0; place(); }
       camera.fov = st.fov; camera.updateProjectionMatrix();
     });
     st.active = false; $('flyHud').hidden = true; hooks.setMode('play');
-    ui.toast(st.awayFromCage ? 'Pyra Lumière\'deki kafesine uçtu · Ejderha Terası\'ndaki gongla yeniden çağırabilirsin' : 'Pyra kafesine döndü', st.awayFromCage ? 4200 : 2200);
+    ui.toast(home ? 'Pyra kafesine döndü' : 'Pyra burada seni bekliyor · yanına gidip E ile yeniden bin', home ? 2200 : 3600);
+  }
+  /** Pyra'yı kafesindeki yerine koyar. */
+  function goHome(){
+    st.parked = false; D.root.visible = true;
+    st.home.parent.attach(D.root); D.root.position.copy(st.home.pos); D.root.rotation.copy(st.home.rot); D.root.scale.copy(st.home.scale); D.root.userData.shared = false;
   }
 
   function place(){
@@ -118,6 +146,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
   function showTitle(name, sub){ const el = $('flyTitle'); el.querySelector('b').textContent = name; el.querySelector('span').textContent = sub; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); st.titleT = 4; }
 
   function update(dt, t){
+    if (st.parked) D.root.visible = !hooks.away || !hooks.away();   // gemiyle başka adaya gidilince görünmesin
     if (!st.active) return;
     const K = input.keys, mv = input.move;
     // tuşlar
@@ -164,7 +193,7 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     if (st.grounded) st.pos.y = gy;
     st.pos.y = Math.min(st.pos.y, 420);
     // dünya sınırı: Lumière ile Yùlóng Adası'nı kapsayan daire; yumuşakça geri döndür
-    const mx = CHINA.x / 2, mz = (10 + CHINA.z) / 2, RB = Math.hypot(CHINA.x, CHINA.z - 10) / 2 + 820;
+    const {mx, mz, RB} = FLY;
     const rr = Math.hypot(st.pos.x - mx, st.pos.z - mz); if (rr > RB){ const k = RB / rr; st.pos.x = mx + (st.pos.x - mx) * k; st.pos.z = mz + (st.pos.z - mz) * k; st.yaw += dt * 1.2; }
     st.roll += ((-st.yawRate * 0.55 * Math.min(1, st.speed / 10)) - st.roll) * Math.min(1, dt * 3);
     place();
@@ -201,10 +230,10 @@ export function createDragonRide({world, C, hero, input, ui, audio, sanctuary, h
     const ps = places(); let best = null, bd = 1e9;
     for (const p of ps){ const d = Math.hypot(p.x - st.pos.x, p.z - st.pos.z); if (d < bd){ bd = d; best = p; } }
     $('flyAlt').innerHTML = '<b>' + Math.round(st.pos.y) + '</b> m <span>· ' + st.speed.toFixed(1).replace('.', ',') + ' m/sn · yerden ' + Math.round(st.pos.y - gy) + ' m</span>';
-    $('flyLoc').textContent = best && bd < 70 ? 'Konum: ' + best.name : onChina(st.pos.x, st.pos.z) ? 'Konum: ' + CHINA.name : Math.hypot(st.pos.x, st.pos.z - 10) < 480 ? 'Konum: Lumière arazisi' : 'Konum: açık deniz';
+    $('flyLoc').textContent = best && bd < 70 ? 'Konum: ' + best.name : onChina(st.pos.x, st.pos.z) ? 'Konum: ' + CHINA.name : anchoredAt(st.pos.x, st.pos.z, 0) ? 'Konum: ' + anchoredAt(st.pos.x, st.pos.z, 0).name : Math.hypot(st.pos.x, st.pos.z - 10) < 480 ? 'Konum: Lumière arazisi' : 'Konum: açık deniz';
     if (best && bd < 45 && best !== st.title && !st.grounded){ st.title = best; showTitle(best.name, best.sub); }
     st.titleT -= dt; if (st.titleT <= 0) $('flyTitle').classList.remove('on');
   }
 
-  return {start, stop, update, get active(){ return st.active; }, state:st};
+  return {start, stop, update, get active(){ return st.active; }, get parked(){ return st.parked; }, state:st};
 }

@@ -8,6 +8,7 @@ Bu belge `src/islands/<ada-kimligi>/island.js` dosyasının nasıl yazılacağı
 - `_` ile başlayan klasörler (ör. `_sablon`) yüklenmez.
 - Oyuncu Lumière'in güney iskelesindeki **La Belle Étoile** gemisine (ya da Kaptan Jean-Baptiste'e) **E** ile gelince açılan listeden adanı seçer.
 - Bütün katkıcı adaları dünyanın merkezinde (0, 0) kurulur ama **aynı anda yalnız bir ada görünür.** Gemiyle gidilince önceki ada gizlenir. Ada ilk ziyarette kurulur, bu yüzden oyunun açılışını yavaşlatmaz.
+- İstisna: `at` veren **konumlu adalar** dünyada kendi yerinde sabit durur, Lumière'in çarpışma alanını paylaşır, hep görünür ve Pyra ile uçularak gidilir (gemiyle de gidilebilir). Önyükleme oyun açıldıktan birkaç saniye sonra boşta yapılır.
 - Her adanın kendi çarpışma alanı (`ctx.C`), kıyısı, okyanusu, iskelesi, kaptanı ve gemisi vardır. İskele, kaptan ve gemi kendiliğinden eklenir.
 - `build(ctx)` bir hata fırlatırsa oyun çökmez. Konsola `[ada] <id> kurulamadı` yazılır ve oyuncu Lumière'e döner. Her kare çalışan kodda hata çıkarsa adanın güncellemeleri durdurulur.
 
@@ -29,6 +30,8 @@ Bu belge `src/islands/<ada-kimligi>/island.js` dosyasının nasıl yazılacağı
 | `terrain` | | `{groundColor, sand, grass, shallow, deep, rocks, seed}`: çim, kum, kıyı otu, sığ ve derin su renkleri (hex), kaya sayısı. |
 | `harbor` | | İskelenin kıyıdaki açısı (radyan, varsayılan 0, yani güney). |
 | `pierLength` | | İskelenin boyu (m, varsayılan 46). |
+| `at` | | `{x, z}`: adayı dünyada bu noktaya koyar (**konumlu ada**). Lumière ve Yùlóng gibi hep görünür, ejderha Pyra ile uçulur. Kodunu yine kendi (0, 0) merkezli koordinatlarınla yazarsın; çarpışma, etkileşim ve işaretler motor tarafından kaydırılır. Lumière'in yaklaşık 1,5 km'sinde, kıyılar arası ~500 m boşluk bırakacak biçimde seç (İstanbul: `{x:-980, z:-980}`, yarıçap 470). |
+| `map` | | `{rings:() => [[[x, z], ...]], pins:[{name, x, z}]}`: minimap ve **M** haritasında çizilecek gerçek kıyı şekli ve yer işaretleri (ada koordinatlarında). Verilmezse kıyı çemberi çizilir. |
 
 `coast` alanında `cx`, `cz` ve `fn` **verme**: ada her zaman merkezde kurulur.
 
@@ -78,6 +81,7 @@ coast:{
 | `ctx.room(spec)` | İçine girilebilen bina. Ayrıntısı aşağıda. |
 | `ctx.onUpdate(fn)` | Her karede `fn(dt, t, hero)` çağrılır (yalnız ada görünürken). |
 | `ctx.hero` | Oyuncunun konumu: `x`, `y`, `z` (salt okunur). |
+| `ctx.callDragon({x, z, yaw})` | Pyra'yı bu noktaya çağırır (yalnız konumlu adalarda anlamlı; ör. iniş alanındaki boru). Nokta boş bir zemin olmalı. |
 | `ctx.world`, `ctx.audio` | Motorun kendisi. Yalnız gerçekten gerekirse kullan. Bunlarla Lumière'i ya da genel ayarları değiştiren PR kabul edilmez. |
 
 `build` bir nesne döndürebilir:

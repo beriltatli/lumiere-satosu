@@ -152,6 +152,7 @@ export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [],
   function bake(){
     root.updateMatrixWorld(true);
     const buckets = new Map(), drop = [];
+    const rootInv = root.matrixWorld.clone().invert(), rm = new THREE.Matrix4();   // birleşen parça kökün yerel düzenine (kök kaydırılmış olabilir)
     const mergable = o => o.isMesh && !o.isInstancedMesh && o.geometry.attributes.uv && !o.userData.keep;
     const flat = (g, mtx) => { g = (g.index ? g.toNonIndexed() : g.clone()).applyMatrix4(mtx); Object.keys(g.attributes).forEach(k => { if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); }); return g; };
     const mergeLocal = G => {
@@ -171,7 +172,7 @@ export function makeKit(world, C, root, {seed = 1, interact = [], updaters = [],
       if (mergable(o)){
         const wp = o.getWorldPosition(L(0, 0, 0)), key = [o.material.uuid, o.castShadow, o.renderOrder, o.layers.mask, Math.floor(wp.x / 90), Math.floor(wp.z / 90)].join('|');
         let b = buckets.get(key); if (!b){ b = {mat:o.material, cast:o.castShadow, order:o.renderOrder, layers:o.layers.mask, geos:[]}; buckets.set(key, b); }
-        b.geos.push(flat(o.geometry, o.matrixWorld)); drop.push(o);
+        b.geos.push(flat(o.geometry, rm.multiplyMatrices(rootInv, o.matrixWorld))); drop.push(o);
       }
       o.children.forEach(walk);
     };

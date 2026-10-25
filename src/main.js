@@ -10,7 +10,8 @@ import { buildSea } from './sea.js';
 import { buildChina, CHINA_COAST } from './china.js';
 import { createRooms } from './rooms.js';
 import { addLumiereRooms } from './rooms-lumiere.js';
-import { createArchipelago } from './islands/index.js';
+import { createArchipelago, ANCHORED_COASTS } from './islands/index.js';
+import { createMinimap } from './minimap.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as fflate from 'fflate';
 import { buildWorldCollision } from './game/collision.js';
@@ -36,7 +37,7 @@ const interior = buildInterior(world, {
   cook:() => talkCook(), showKitchen:() => S.notes.cookQuest && !S.notes.coinMap && (S.notes.oranges || []).length >= 3,
 });
 hero.Cin = interior.C;
-const sea = buildSea(world, C, {others:[CHINA_COAST]});
+const sea = buildSea(world, C, {others:[CHINA_COAST, ...ANCHORED_COASTS]});
 const sanctuary = buildSanctuary(world, C, {ui, sfx:n => audio.sfx(n), save:() => save(), getS:() => S});
 const court = buildCourt(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, gazeSky:p => startSkyGaze(p)});
 const royal = buildRoyal(world, C, {ui, audio, sfx:n => audio.sfx(n), save:() => save(), getS:() => S, tour:T => startTour(T)});
@@ -52,11 +53,15 @@ const ride = createDragonRide({world, C, hero, input, ui, audio, sanctuary, hook
   setMode:m => setMode(m), nextWeather:() => setWeather(nextWeather(), true),
   photo:() => { composer.render(); renderer.domElement.toBlob(b => b && world.offer('lumiere-ejderha.png', b), 'image/png'); },
   landed:(from, to) => china.pyraLanded(from, to),
+  away:() => !atHome(),
 }});
 // katkıcı adaları (src/islands/<ada>/island.js): Lumière iskelesindeki La Belle Étoile ile gidilir.
 // Hepsi dünyanın merkezinde kurulur, aynı anda yalnız biri görünür; Lumière'in güncellemeleri ve işaretleri o sırada durur.
-const islands = createArchipelago({world, hero, ui, audio, rooms, sea, getS:() => S, save:() => save(), env:{lumiereC:C}});
+const islands = createArchipelago({world, hero, ui, audio, rooms, sea, getS:() => S, save:() => save(), env:{lumiereC:C, callPyra:at => ride.start(at)}});
 const atHome = () => islands.current === 'lumiere';
+// sağ altta minimap, M tuşuyla dünya haritası
+const minimap = createMinimap({hero, getMode:() => mode, sea, china, islands,
+  getLook:() => ride.active ? hero.yaw : Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z)});
 ui.extraQuests.push(S => islands.journal(S));
 // bütün malzemelere atmosfer yaması: sis, bulut gölgesi, yüzey çeşitliliği, temas gölgesi
 world.atmo.patchScene();
@@ -150,6 +155,7 @@ function startPlay(){
   const P = S.player; hero.teleport(P.x, C.height(P.x, P.z), P.z, P.yaw);
   if (S.mounted && hero.horse && !S.island) hero.mount();
   islands.restore(S);
+  setTimeout(() => islands.warm(), 4000);   // konumlu adalar (İstanbul…) oyun açıldıktan sonra boşta kurulur
   if (S.finished){ applySword(); world.setPowerOn(true); }
   if (!S.started){ S.started = true; ui.toast('Ahır ustası Gaston\'u bul', 3600); }
   setMode('play'); save();
@@ -495,7 +501,7 @@ function frame(){
     saveTimer -= dt; if (saveTimer <= 0){ save(); saveTimer = 6; }
     ui.stats(S.elapsed, world.WEATHER[world.weatherKey].name + ' · rüzgâr ' + Math.round(6 + world.state.wind * 40) + ' km/s');
     const look = Math.atan2(hero.camTarget.x - camera.position.x, hero.camTarget.z - camera.position.z);
-    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : !atHome() ? islands.markers() : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, china.markers, horseMarker())).concat(atHome() ? coinMarkers() : []));
+    ui.compass(look, hero.pos.x, hero.pos.z, (hero.zone === 'ic' ? interior.markers : !atHome() ? islands.markers() : content.markers.concat(estate.markers || [], sanctuary.markers, court.markers, royal.markers, china.markers, horseMarker(), islands.homeMarkers())).concat(atHome() ? coinMarkers() : []));
     if (atHome()) updateOranges(dt, t);
   } else if (mode === 'play' && ui.dialogOpen){
     hero.frozen = true; hero.update(dt, t, {rainSlow:1, sfx:() => {}, towerCenter:content.TW, towerFloor:content.TW.floor});
@@ -550,6 +556,7 @@ function frame(){
     });
   }
   islands.update(dt, t);
+  minimap.update(dt);
   audio.style = atHome() && china.near ? 'cin' : 'fr';
   rooms.update(dt, t, hero);
   if (indoor){ applyIndoorLight(); if (hero.zone === 'ic'){ winTimer -= dt; if (winTimer <= 0){ captureOutside(); winTimer = 6; } } }

@@ -34,6 +34,7 @@ Tarayıcı kendiliğinden `http://localhost:5173` adresinde açılır. Yayına h
 | V | Attayken birinci şahıs / üçüncü şahıs |
 | Fareyi sürükle · tekerlek | Kamerayı çevir · yakınlaştır |
 | J | Görev günlüğü |
+| M | Harita (sağ alttaki minimap'e de tıklanabilir) |
 | Esc | Menü (ses, kamera hassasiyeti, görüntü kalitesi, fotoğraf modu) |
 | Telefon | Sol başparmak yürür, sağ başparmak kamerayı çevirir, sağ alttaki tuşlar |
 
@@ -179,6 +180,10 @@ Lumière'in güneydoğusunda, güney kumsalından ~570 m açıkta, ufukta pagoda
 Lumière'in güney iskelesinin ucundaki **La Belle Étoile** gemisine (ya da Kaptan Jean-Baptiste'e) **E** ile binilince katkıcıların eklediği adalara sefer yapılır. Her ada `src/islands/<ada>/island.js` dosyasında tek bir tanımdır. Oyun bu dosyaları kendiliğinden bulur ve ana koda dokunmak gerekmez. Adalar ilk ziyarette kurulur ve aynı anda yalnız biri görünür. Kıyı, okyanus, iskele, keşif görevi ve kayıt sistemden gelir.
 
 Kendi adanı eklemek için: [CONTRIBUTING.md](CONTRIBUTING.md) (adım adım süreç) ve [src/islands/ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md) (kurallar ve API). Çalışan örnek: [src/islands/_sablon/island.js](src/islands/_sablon/island.js).
+
+## İstanbul Boğazı (konumlu ada)
+
+Lumière'in kuzeybatısında, Yùlóng ile benzer mesafede **İstanbul Boğazı** durur: elle düzenlenmiş, küçültülmüş bir İstanbul. Kuzeyde Beyoğlu (Galata Kulesi, İstiklal Caddesi ve tramvayı, Taksim, Dolmabahçe), güneybatıda Tarihî Yarımada (Sultanahmet, Ayasofya, Topkapı, Kapalıçarşı, Süleymaniye, Eminönü), doğuda Asya yakası (Üsküdar, Salacak, Kız Kulesi, Haydarpaşa). Yakalar arasında Boğaz ve Haliç; Galata ve Boğaziçi köprülerinden yürünür. Cumbalı evler, laleler, çınarlar, vapurlar, martılar; simitçi, balıkçılar, çaycı, rehber, kayıkçı, dondurmacı ve Kapalıçarşı'daki esnaf. Küçük görev: şehrin 12 kedisini sev. Pyra ile uçarak ya da La Belle Étoile ile gidilir; Kadıköy'deki iniş alanındaki boruyla Pyra'ya binilir. `at` veren bu tür **konumlu adalar** hep görünür ve uçulabilir (bkz. [ADA_TALIMATI.md](src/islands/ADA_TALIMATI.md)).
 
 ## Atmosfer ve ışık
 
