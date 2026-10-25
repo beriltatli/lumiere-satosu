@@ -573,7 +573,7 @@ export function buildSanctuary(world, C, hooks){
     // binildiğinde (dragonride.js) kafes animasyonu yerine uçuş animasyonu çalışır
     if (!D.riding){
       const wpos = dr.getWorldPosition(tmpV), dx = hero.pos.x - wpos.x, dz = hero.pos.z - wpos.z, dist = Math.hypot(dx, dz);
-      const worldYaw = dr.rotation.y + cage.rotation.y;
+      const worldYaw = dr.rotation.y + (dr.parent === cage ? cage.rotation.y : 0);   // dışarıda bekliyorsa kafese bağlı değil
       let look = 0; if (dist < 32){ look = Math.atan2(dx, dz) - worldYaw; look = Math.atan2(Math.sin(look), Math.cos(look)); look = Math.max(-1.1, Math.min(1.1, look)); }
       D.neck.forEach((n, i) => { n.rotation.y += ((look / D.neck.length) + Math.sin(t * 0.6 + i * 0.4) * 0.03 - n.rotation.y) * Math.min(1, dt * 2); n.rotation.x = (n.userData.bx ?? 0) + Math.sin(t * 0.8 + i * 0.5) * 0.03 - (D.roar > 0 ? 0.1 : 0); });
       D.tail.forEach((n, i) => { n.rotation.y = Math.sin(t * (D.happy > 0 ? 3 : 1.1) - i * 0.5) * (0.12 + (D.happy > 0 ? 0.08 : 0)); n.rotation.x = 0.05; });
