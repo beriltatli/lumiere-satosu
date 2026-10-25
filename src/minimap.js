@@ -1,6 +1,7 @@
 // Minimap (sağ altta) ve M tuşuyla açılan dünya haritası.
-// Adaların şekli kıyı çizgilerinden gelir (Lumière, Yùlóng, konumlu adalar: islands.mapShapes()); oyuncu ok olarak çizilir.
+// Adaların şekli kıyı çizgilerinden gelir (Lumière, Yùlóng, Yeni Dünya, konumlu adalar: islands.mapShapes()); oyuncu ok olarak çizilir.
 import { CHINA } from './china.js';
+import { AMERICA_COAST, AMERICA_PLACES } from './america/index.js';
 import { CAGE } from './sanctuary.js';
 
 const LAND = '#a8b585', COAST = '#efe3b4', SHALLOW = 'rgba(70,160,180,.55)', WATER = '#164c68', GOLD = '#d4af37';
@@ -40,6 +41,7 @@ export function createMinimap({hero, getLook, getMode, sea, china, islands}){
   const HOME = [
     {id:'lumiere', name:'Lumière Adası', rings:[circle(sea.coast)], pins:[{name:'Lumière Şatosu', x:0, z:-40}, {name:'Ejderha Kafesi', x:CAGE.x, z:CAGE.z}, {name:'Liman', x:sea.pier.end[0], z:sea.pier.end[1]}]},
     {id:'china', name:CHINA.name, rings:[circle(china.coast)], pins:[]},
+    {id:'america', name:'Yeni Dünya Adası', rings:[circle(AMERICA_COAST)], pins:AMERICA_PLACES.filter(p => !p.id.startsWith('lm:')).map(p => ({name:p.name, x:p.x, z:p.z}))},
   ];
   const shapes = () => islands.current === 'lumiere' ? HOME.concat(islands.mapShapes()) : islands.mapShapes();
 
